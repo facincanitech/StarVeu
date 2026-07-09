@@ -569,22 +569,91 @@ const moonShips = []; // apesar do nome, hoje orbita qualquer corpo — ver camp
 function anchorPosition(key){
   return key === 'Moon' ? moonMesh.position : objects[key].mesh.position;
 }
-MOON_SHIPS.forEach(s=>{
+function metalMat(color, roughness=0.42, metalness=0.65){
+  return new THREE.MeshStandardMaterial({ color, roughness, metalness, side:THREE.DoubleSide });
+}
+function glowMat(color, opacity=1){
+  return new THREE.MeshBasicMaterial({ color, transparent: opacity < 1, opacity, side:THREE.DoubleSide });
+}
+function addPart(group, geo, mat, pos=[0,0,0], rot=[0,0,0], scale=[1,1,1]){
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.set(...pos);
+  mesh.rotation.set(...rot);
+  mesh.scale.set(...scale);
+  group.add(mesh);
+  return mesh;
+}
+function addWindowRow(group, count, y, z, width, color){
+  for (let i=0;i<count;i++){
+    const x = (i/(count-1)-0.5)*width;
+    addPart(group, new THREE.BoxGeometry(0.055,0.035,0.018), glowMat(color,0.95), [x,y,z]);
+  }
+}
+function addSolarPanel(group, x, y, z, sx, sy, side){
+  addPart(group, new THREE.BoxGeometry(sx, sy, 0.035), metalMat(0x10263f,0.25,0.2), [x,y,z]);
+  addPart(group, new THREE.BoxGeometry(0.025, sy*1.08, 0.045), metalMat(0xd8dde2,0.35,0.7), [x - side*sx*0.25,y,z+0.005]);
+  addPart(group, new THREE.BoxGeometry(0.025, sy*1.08, 0.045), metalMat(0xd8dde2,0.35,0.7), [x + side*sx*0.25,y,z+0.005]);
+}
+function buildFictionCraft(s){
   const group = new THREE.Group();
-  // sem textura licenciada nenhuma — o "casco metálico" vem só do material (metalness/roughness)
-  const body = new THREE.Mesh(new THREE.ConeGeometry(s.size*0.35, s.size*1.4, 8), new THREE.MeshStandardMaterial({ color:s.color, roughness:0.32, metalness:0.75 }));
-  body.rotation.x = Math.PI/2;
-  group.add(body);
-  const accent = new THREE.Mesh(new THREE.SphereGeometry(s.size*0.16, 8, 8), new THREE.MeshBasicMaterial({ color:s.accent }));
-  accent.position.set(0, 0, s.size*0.55);
-  group.add(accent);
+  const R = s.size;
+  const hull = metalMat(s.color,0.34,0.72);
+  const dark = metalMat(0x30363d,0.55,0.55);
+  const accent = glowMat(s.accent,0.92);
+
+  if (s.universe === 'Star Trek'){
+    addPart(group, new THREE.CylinderGeometry(R*0.72,R*0.82,R*0.16,48), hull, [0,0,0], [Math.PI/2,0,0], [1.25,1,1]);
+    addPart(group, new THREE.SphereGeometry(R*0.28,32,16), hull, [0,R*0.04,0.08], [0,0,0], [1.45,0.22,0.85]);
+    addPart(group, new THREE.CylinderGeometry(R*0.22,R*0.26,R*0.95,24), hull, [0,-R*0.06,-R*0.82], [Math.PI/2,0,0], [0.9,1,0.9]);
+    addPart(group, new THREE.BoxGeometry(R*0.18,R*0.11,R*0.55), hull, [0,-R*0.02,-R*0.42]);
+    [-1,1].forEach(side=>{
+      addPart(group, new THREE.CylinderGeometry(R*0.09,R*0.11,R*1.15,20), dark, [side*R*0.72,0,-R*0.82], [Math.PI/2,0,0]);
+      addPart(group, new THREE.BoxGeometry(R*0.08,R*0.06,R*0.72), hull, [side*R*0.38,-R*0.02,-R*0.62], [0,side*0.12,0]);
+      addPart(group, new THREE.SphereGeometry(R*0.11,16,12), accent, [side*R*0.72,0,R*-1.39], [0,0,0], [1,1,0.45]);
+    });
+    addWindowRow(group, 7, R*0.12, R*0.78, R*0.95, s.accent);
+  } else if (s.universe === 'Star Wars'){
+    addPart(group, new THREE.CylinderGeometry(R*0.95,R*1.0,R*0.18,48), hull, [0,0,0], [Math.PI/2,0,0], [1,1,0.8]);
+    addPart(group, new THREE.CylinderGeometry(R*0.18,R*0.2,R*0.42,20), dark, [R*0.7,R*0.02,R*0.16], [0,0,Math.PI/2]);
+    addPart(group, new THREE.SphereGeometry(R*0.2,20,12), hull, [R*1.02,R*0.02,R*0.16], [0,0,0], [1,0.72,0.72]);
+    [-1,1].forEach(side=>{
+      addPart(group, new THREE.BoxGeometry(R*0.28,R*0.12,R*0.62), hull, [side*R*0.36,0,R*0.74], [0,side*0.12,0]);
+      addPart(group, new THREE.BoxGeometry(R*0.16,R*0.09,R*0.55), dark, [side*R*0.55,R*0.01,R*0.62], [0,side*0.16,0]);
+    });
+    addPart(group, new THREE.CylinderGeometry(R*0.08,R*0.08,R*0.48,12), metalMat(0xb8b2a0,0.5,0.55), [-R*0.3,R*0.18,-R*0.16], [0.9,0.4,0]);
+    addPart(group, new THREE.CircleGeometry(R*0.18,24), metalMat(0x59606a,0.5,0.5), [-R*0.42,R*0.38,-R*0.28], [-0.85,0.1,0], [1,1,1]);
+    addWindowRow(group, 5, R*0.14, R*0.52, R*0.7, s.accent);
+  } else if (s.universe === 'Lost in Space'){
+    addPart(group, new THREE.CylinderGeometry(R*0.9,R*0.98,R*0.2,56), hull, [0,0,0], [Math.PI/2,0,0]);
+    addPart(group, new THREE.SphereGeometry(R*0.68,36,16), hull, [0,R*0.12,0], [0,0,0], [1,0.28,1]);
+    addPart(group, new THREE.SphereGeometry(R*0.42,32,12), new THREE.MeshStandardMaterial({ color:0x9fc8d8, roughness:0.18, metalness:0.2, transparent:true, opacity:0.55 }), [0,R*0.28,0], [0,0,0], [1,0.36,1]);
+    addPart(group, new THREE.TorusGeometry(R*0.74,R*0.035,10,48), dark, [0,-R*0.05,0], [Math.PI/2,0,0]);
+    [-1,1].forEach(side=>{
+      addPart(group, new THREE.CylinderGeometry(R*0.05,R*0.08,R*0.32,12), accent, [side*R*0.45,-R*0.16,R*0.32], [0,0,0]);
+      addPart(group, new THREE.CylinderGeometry(R*0.05,R*0.08,R*0.32,12), accent, [side*R*0.45,-R*0.16,-R*0.32], [0,0,0]);
+    });
+  } else {
+    addPart(group, new THREE.CylinderGeometry(R*0.22,R*0.3,R*1.05,24), hull, [0,0,0], [Math.PI/2,0,0]);
+    addPart(group, new THREE.ConeGeometry(R*0.28,R*0.38,24), hull, [0,0,R*0.72], [Math.PI/2,0,0]);
+    addPart(group, new THREE.SphereGeometry(R*0.18,18,12), accent, [0,0,R*0.95]);
+    [-1,1].forEach(side=>{
+      addPart(group, new THREE.BoxGeometry(R*0.18,R*0.055,R*0.9), metalMat(0xcfd8df,0.35,0.7), [side*R*0.42,0,0]);
+      addSolarPanel(group, side*R*0.92, 0, 0, R*0.72, R*0.42, side);
+      addPart(group, new THREE.CylinderGeometry(R*0.035,R*0.035,R*0.55,10), dark, [side*R*0.28,0,R*0.1], [0,0,Math.PI/2]);
+    });
+    addPart(group, new THREE.CylinderGeometry(R*0.025,R*0.025,R*0.72,8), metalMat(0xe8eef4,0.35,0.7), [0,R*0.28,R*0.08], [0.35,0,0]);
+    addPart(group, new THREE.SphereGeometry(R*0.05,10,8), accent, [0,R*0.62,R*0.2]);
+  }
+  return group;
+}
+MOON_SHIPS.forEach(s=>{
+  const group = buildFictionCraft(s);
   fictionGroupFor(s.universe).add(group);
   const label = makeLabel(s.name);
   label.position.set(0, s.size + 1.2, 0); // filho do group: offset local, sobrevive à rotação (fica no eixo Y)
   group.add(label);
   moonShips.push({ group, label, def:s });
 });
-
 // "Estação Estelar" (homenagem Star Trek) — núcleo + anel de docagem, orbitando a Terra.
 // Geometria 100% procedural, sem textura/modelo oficial nenhum.
 (function starbaseHomage(){
@@ -592,17 +661,21 @@ MOON_SHIPS.forEach(s=>{
   const def = { name:'"Estação Estelar"', universe:'Star Trek', size:R, anchor:'Earth', orbitRadius:6, periodSec:19, tiltDeg:15,
     status:'Ficção (Star Trek) — homenagem própria a um posto avançado orbital, geometria 100% procedural, sem afiliação com a franquia.' };
   const group = new THREE.Group();
-  const core = new THREE.Mesh(new THREE.CylinderGeometry(R*0.4, R*0.4, R*1.1, 12), new THREE.MeshStandardMaterial({ color:0xcfd6dc, roughness:0.35, metalness:0.7 }));
-  group.add(core);
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(R*1.15, R*0.14, 10, 32), new THREE.MeshStandardMaterial({ color:0x8fa0ac, roughness:0.4, metalness:0.65 }));
-  ring.rotation.x = Math.PI/2;
-  group.add(ring);
-  const beacon = new THREE.Mesh(new THREE.SphereGeometry(R*0.14, 10, 10), new THREE.MeshBasicMaterial({ color:0xffcf70 }));
-  beacon.position.set(0, R*0.7, 0);
-  group.add(beacon);
+  addPart(group, new THREE.CylinderGeometry(R*0.34,R*0.44,R*1.35,24), metalMat(0xcfd6dc,0.32,0.72), [0,0,0]);
+  addPart(group, new THREE.SphereGeometry(R*0.42,28,16), metalMat(0xdfe5ea,0.35,0.65), [0,R*0.78,0], [0,0,0], [1,0.45,1]);
+  addPart(group, new THREE.TorusGeometry(R*1.12,R*0.1,12,64), metalMat(0x8fa0ac,0.4,0.65), [0,R*0.1,0], [Math.PI/2,0,0]);
+  addPart(group, new THREE.TorusGeometry(R*0.68,R*0.055,10,48), metalMat(0x667888,0.42,0.7), [0,-R*0.42,0], [Math.PI/2,0,0]);
+  for (let i=0;i<8;i++){
+    const a = i*Math.PI/4;
+    const x = Math.cos(a)*R*1.12, z = Math.sin(a)*R*1.12;
+    addPart(group, new THREE.BoxGeometry(R*0.1,R*0.08,R*0.46), metalMat(0xb8c3cc,0.36,0.7), [x,R*0.1,z], [0,-a,0]);
+    addPart(group, new THREE.SphereGeometry(R*0.045,8,8), glowMat(0x7fbfff,0.92), [x,R*0.1,z]);
+  }
+  addPart(group, new THREE.SphereGeometry(R*0.12,14,10), glowMat(0xffcf70), [0,R*1.16,0]);
+  addPart(group, new THREE.CylinderGeometry(R*0.025,R*0.025,R*0.65,8), metalMat(0xe8eef4,0.35,0.7), [0,R*1.45,0], [0.25,0,0]);
   fictionGroupFor(def.universe).add(group);
   const label = makeLabel(def.name);
-  label.position.set(0, R + 1.2, 0);
+  label.position.set(0, R + 1.45, 0);
   group.add(label);
   moonShips.push({ group, label, def });
 })();
@@ -614,15 +687,18 @@ MOON_SHIPS.forEach(s=>{
   const def = { name:'"Cidade Flutuante"', universe:'Star Wars', size:R, anchor:'Saturn', orbitRadius:17, periodSec:30, tiltDeg:-12,
     status:'Ficção (Star Wars) — homenagem própria a uma cidade suspensa numa atmosfera de gigante gasoso, geometria 100% procedural, sem afiliação com a franquia.' };
   const group = new THREE.Group();
-  const disc = new THREE.Mesh(new THREE.CylinderGeometry(R, R*0.7, R*0.18, 20), new THREE.MeshStandardMaterial({ color:0xe8d9b8, roughness:0.5, metalness:0.3 }));
-  group.add(disc);
-  const stalk = new THREE.Mesh(new THREE.CylinderGeometry(R*0.06, R*0.06, R*0.9, 8), new THREE.MeshStandardMaterial({ color:0x8a7d68, roughness:0.6 }));
-  stalk.position.y = -R*0.5;
-  group.add(stalk);
-  const glow = new THREE.Mesh(new THREE.RingGeometry(R*0.75, R*0.95, 24), new THREE.MeshBasicMaterial({ color:0xff8844, side:THREE.DoubleSide, transparent:true, opacity:0.7 }));
-  glow.rotation.x = Math.PI/2;
-  glow.position.y = R*0.1;
-  group.add(glow);
+  addPart(group, new THREE.CylinderGeometry(R,R*0.72,R*0.18,48), metalMat(0xe8d9b8,0.5,0.32), [0,0,0]);
+  addPart(group, new THREE.CylinderGeometry(R*0.52,R*0.78,R*0.22,36), metalMat(0xd0bc91,0.52,0.35), [0,R*0.2,0]);
+  addPart(group, new THREE.CylinderGeometry(R*0.08,R*0.13,R*1.12,16), metalMat(0x8a7d68,0.6,0.28), [0,-R*0.62,0]);
+  addPart(group, new THREE.ConeGeometry(R*0.28,R*0.68,24), metalMat(0x9c8d72,0.56,0.3), [0,-R*1.12,0], [Math.PI,0,0]);
+  for (let i=0;i<10;i++){
+    const a = i*Math.PI*2/10;
+    const x = Math.cos(a)*R*0.78, z = Math.sin(a)*R*0.78;
+    addPart(group, new THREE.BoxGeometry(R*0.12,R*0.16,R*0.09), metalMat(0xc0ad84,0.56,0.32), [x,R*0.28,z], [0,-a,0]);
+    addPart(group, new THREE.BoxGeometry(R*0.07,R*0.05,R*0.025), glowMat(0xffb06a,0.9), [x,R*0.39,z], [0,-a,0]);
+  }
+  addPart(group, new THREE.RingGeometry(R*0.78,R*0.98,48), glowMat(0xff8844,0.62), [0,R*0.08,0], [Math.PI/2,0,0]);
+  addPart(group, new THREE.TorusGeometry(R*1.02,R*0.035,10,64), metalMat(0x6d6251,0.56,0.38), [0,R*0.08,0], [Math.PI/2,0,0]);
   fictionGroupFor(def.universe).add(group);
   const label = makeLabel(def.name);
   label.position.set(0, R + 1.2, 0);
@@ -638,19 +714,21 @@ MOON_SHIPS.forEach(s=>{
   const def = { name:'"Estação-D"', universe:'Star Wars', size:R, orbitRadius:13, periodSec:26, tiltDeg:8,
     status:'Ficção (Star Wars) — homenagem própria, geometria 100% procedural (sem textura oficial), sem afiliação com a franquia.' };
   const group = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.SphereGeometry(R, 32, 32), new THREE.MeshStandardMaterial({ color:0x9aa0a6, roughness:0.55, metalness:0.5 }));
-  group.add(body);
-  const trench = new THREE.Mesh(new THREE.TorusGeometry(R, 0.05, 8, 64), new THREE.MeshStandardMaterial({ color:0x35383d, roughness:0.85 }));
-  trench.rotation.x = Math.PI/2 + 0.18;
-  group.add(trench);
+  addPart(group, new THREE.SphereGeometry(R,48,32), metalMat(0x9aa0a6,0.55,0.5));
+  addPart(group, new THREE.TorusGeometry(R*1.004,0.055,8,96), metalMat(0x30343a,0.82,0.22), [0,0,0], [Math.PI/2 + 0.18,0,0]);
+  for (let i=0;i<18;i++){
+    const a = i*Math.PI*2/18;
+    const y = (i%5 - 2)*R*0.18;
+    addPart(group, new THREE.BoxGeometry(R*0.018,R*0.07,R*0.28), metalMat(0x555b62,0.74,0.3), [Math.cos(a)*R*0.96,y,Math.sin(a)*R*0.96], [0,-a,0]);
+  }
   const dishDir = new THREE.Vector3(1.6, 1.1, 1.0).normalize();
-  const dish = new THREE.Mesh(new THREE.CircleGeometry(R*0.3, 24), new THREE.MeshStandardMaterial({ color:0x5c6066, roughness:0.7, side:THREE.DoubleSide }));
-  dish.position.copy(dishDir).multiplyScalar(R*1.002);
+  const dish = addPart(group, new THREE.CircleGeometry(R*0.34,36), metalMat(0x5c6066,0.7,0.35));
+  dish.position.copy(dishDir).multiplyScalar(R*1.006);
   dish.lookAt(dishDir.clone().multiplyScalar(R*2));
-  group.add(dish);
-  const emitter = new THREE.Mesh(new THREE.SphereGeometry(R*0.05, 10, 10), new THREE.MeshBasicMaterial({ color:0x202225 }));
-  emitter.position.copy(dishDir).multiplyScalar(R*1.01);
-  group.add(emitter);
+  const dishRing = addPart(group, new THREE.TorusGeometry(R*0.34,R*0.018,8,36), metalMat(0x2d3035,0.8,0.25));
+  dishRing.position.copy(dish.position);
+  dishRing.quaternion.copy(dish.quaternion);
+  addPart(group, new THREE.SphereGeometry(R*0.045,12,10), glowMat(0x171b1f), dishDir.clone().multiplyScalar(R*1.02).toArray());
   fictionGroupFor(def.universe).add(group);
   const label = makeLabel(def.name);
   label.position.set(0, R + 1.2, 0);
@@ -658,14 +736,94 @@ MOON_SHIPS.forEach(s=>{
   moonShips.push({ group, label, def });
 })();
 
+// ---------- FROTA ORIGINAL: formas alienígenas proceduralmente variadas ----------
+// Inspiradas no clima de megaestruturas de invasão e engenharia impossível, mas sem copiar naves oficiais.
+function seededRand(seed){
+  let s = seed >>> 0;
+  return function(){
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return s / 4294967296;
+  };
+}
+function buildAlienVessel(def){
+  const rand = seededRand(def.seed || 1);
+  const group = new THREE.Group();
+  const R = def.size;
+  const hull = metalMat(def.color,0.58,0.5);
+  const dark = metalMat(0x18202a,0.72,0.38);
+  const light = glowMat(def.accent,0.82);
+
+  if (def.form === 'mothership'){
+    addPart(group, new THREE.CylinderGeometry(R*1.45,R*1.9,R*0.26,72), hull, [0,0,0], [Math.PI/2,0,0]);
+    addPart(group, new THREE.SphereGeometry(R*0.82,48,18), hull, [0,R*0.1,0], [0,0,0], [1,0.22,1]);
+    addPart(group, new THREE.TorusGeometry(R*1.18,R*0.06,10,72), dark, [0,R*0.02,0], [Math.PI/2,0,0]);
+    addPart(group, new THREE.CylinderGeometry(R*0.28,R*0.42,R*0.18,32), light, [0,-R*0.18,0], [Math.PI/2,0,0]);
+    for (let i=0;i<18;i++){
+      const a = i*Math.PI*2/18;
+      const ring = R*(0.82 + rand()*0.72);
+      addPart(group, new THREE.BoxGeometry(R*0.12,R*0.035,R*(0.18+rand()*0.28)), dark, [Math.cos(a)*ring, -R*0.06, Math.sin(a)*ring], [0,-a,0]);
+      if (i%3===0) addPart(group, new THREE.SphereGeometry(R*0.045,8,6), light, [Math.cos(a)*R*1.65, -R*0.08, Math.sin(a)*R*1.65]);
+    }
+  } else if (def.form === 'crescent'){
+    addPart(group, new THREE.TorusGeometry(R*0.88,R*0.11,12,64,Math.PI*1.55), hull, [0,0,0], [Math.PI/2,0,0]);
+    addPart(group, new THREE.CylinderGeometry(R*0.16,R*0.24,R*0.95,24), hull, [0,0,R*0.15], [Math.PI/2,0,0]);
+    [-1,1].forEach(side=>{
+      addPart(group, new THREE.ConeGeometry(R*0.18,R*0.75,20), dark, [side*R*0.82,0,R*0.22], [0,0,side*Math.PI/2]);
+      addPart(group, new THREE.SphereGeometry(R*0.07,10,8), light, [side*R*1.12,0,R*0.22]);
+    });
+    addPart(group, new THREE.SphereGeometry(R*0.2,18,10), light, [0,0,R*0.72], [0,0,0], [1,0.65,1]);
+  } else if (def.form === 'blade'){
+    addPart(group, new THREE.ConeGeometry(R*0.22,R*1.8,4), hull, [0,0,R*0.05], [Math.PI/2,Math.PI/4,0], [1.25,0.55,1]);
+    addPart(group, new THREE.CylinderGeometry(R*0.11,R*0.16,R*0.72,16), dark, [0,0,-R*0.48], [Math.PI/2,0,0]);
+    [-1,1].forEach(side=>{
+      addPart(group, new THREE.BoxGeometry(R*0.08,R*0.035,R*0.9), hull, [side*R*0.35,0,-R*0.06], [0,side*0.28,0]);
+      addPart(group, new THREE.ConeGeometry(R*0.08,R*0.35,12), light, [side*R*0.58,0,-R*0.54], [Math.PI/2,0,0]);
+    });
+  } else {
+    addPart(group, new THREE.CylinderGeometry(R*0.22,R*0.28,R*0.9,18), hull, [0,0,0], [Math.PI/2,0,0]);
+    for (let i=0;i<3;i++){
+      const a = i*Math.PI*2/3;
+      addPart(group, new THREE.CylinderGeometry(R*0.045,R*0.06,R*0.92,10), dark, [Math.cos(a)*R*0.38,0,Math.sin(a)*R*0.38], [Math.PI/2,0,-a]);
+      addPart(group, new THREE.SphereGeometry(R*0.07,10,8), light, [Math.cos(a)*R*0.78,0,Math.sin(a)*R*0.78]);
+    }
+    addPart(group, new THREE.SphereGeometry(R*0.16,16,10), light, [0,0,R*0.52]);
+  }
+  return group;
+}
+(function originalAlienFleet(){
+  const defs = [
+    { name:'Nave Colmeia', form:'mothership', universe:'Original', color:0x6d7782, accent:0x8dfff4, size:1.85, anchor:'Earth', orbitRadius:10, periodSec:24, tiltDeg:28, seed:1201,
+      status:'Original do projeto — megaestrutura alienígena em disco, inspirada em ficção de invasão sem copiar nenhum design oficial.' },
+    { name:'Disco Atmosférico', form:'mothership', universe:'Original', color:0x565f68, accent:0xfff0a0, size:1.25, anchor:'Mars', orbitRadius:6, periodSec:17, tiltDeg:-18, seed:4312,
+      status:'Original do projeto — nave discoidal pesada para entrada atmosférica e observação orbital.' },
+    { name:'Crescente Negro', form:'crescent', universe:'Original', color:0x4d5b69, accent:0xb08dff, size:1.45, anchor:'Moon', orbitRadius:11, periodSec:21, tiltDeg:42, seed:8821,
+      status:'Original do projeto — cruzador em arco com núcleo luminoso e pontas assimétricas.' },
+    { name:'Lâmina Abissal', form:'blade', universe:'Original', color:0x7a8490, accent:0x6aff9e, size:1.25, anchor:'Moon', orbitRadius:8.5, periodSec:13, tiltDeg:-46, seed:991,
+      status:'Original do projeto — interceptador angular, sem referência direta a nave licenciada.' },
+    { name:'Sonda Tridente', form:'trident', universe:'Original', color:0x91a6b8, accent:0xff7fd6, size:1.05, anchor:'Jupiter', orbitRadius:10, periodSec:16, tiltDeg:12, seed:7717,
+      status:'Original do projeto — sonda de três antenas para fenômenos de alta energia.' },
+  ];
+  defs.forEach(def=>{
+    const group = buildAlienVessel(def);
+    fictionGroupFor(def.universe).add(group);
+    const label = makeLabel(def.name);
+    label.position.set(0, def.size + 1.25, 0);
+    group.add(label);
+    moonShips.push({ group, label, def });
+  });
+})();
 // ---------- CAMADA FENÔMENOS: marcador de relatos não confirmados perto da Lua ----------
 const PHENOMENA_NAME = 'Zona de relatos não confirmados';
 const phenomenaGroup = registerItemGroup('phenomena', PHENOMENA_NAME, new THREE.Group());
 solarGroup.add(phenomenaGroup);
-const phenomenaMarkerMesh = new THREE.Mesh(
-  new THREE.RingGeometry(1.6, 2.0, 24),
-  new THREE.MeshBasicMaterial({ color:0xffe27a, side:THREE.DoubleSide, transparent:true, opacity:0.6 })
-);
+const phenomenaMarkerMesh = new THREE.Group();
+addPart(phenomenaMarkerMesh, new THREE.RingGeometry(1.35, 1.75, 48), glowMat(0xffe27a,0.5), [0,0,0], [Math.PI/2,0,0]);
+addPart(phenomenaMarkerMesh, new THREE.RingGeometry(0.62, 0.72, 32), glowMat(0x7fd8ff,0.7), [0,0,0], [0.35,0.18,0]);
+addPart(phenomenaMarkerMesh, new THREE.SphereGeometry(0.22,18,12), glowMat(0xffffff,0.9), [0,0,0]);
+for (let i=0;i<6;i++){
+  const a = i*Math.PI*2/6;
+  addPart(phenomenaMarkerMesh, new THREE.SphereGeometry(0.055,8,6), glowMat(0xffe27a,0.8), [Math.cos(a)*1.95, Math.sin(a)*0.28, Math.sin(a)*1.95]);
+}
 phenomenaGroup.add(phenomenaMarkerMesh);
 const phenomenaMarkerLabel = makeLabel(PHENOMENA_NAME);
 phenomenaGroup.add(phenomenaMarkerLabel);
