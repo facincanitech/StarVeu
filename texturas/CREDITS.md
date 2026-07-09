@@ -28,13 +28,14 @@ https://commons.wikimedia.org/wiki/Category:Solar_System_Scope (mesma licença C
 | `2k_saturn_ring_alpha.png` | Saturno | textura + alpha do anel |
 | `2k_uranus.jpg` | Urano | superfície |
 | `2k_neptune.jpg` | Netuno | superfície |
-| `2k_ceres_fictional.jpg` | Ceres (planeta-anão) | **não usado ainda** — sem corpo correspondente no código (astronomy-engine não tem efeméride pra ele) |
-| `2k_eris_fictional.jpg` | Éris (planeta-anão) | **não usado ainda** — idem |
-| `2k_haumea_fictional.jpg` | Haumea (planeta-anão) | **não usado ainda** — idem |
-| `2k_makemake_fictional.jpg` | Makemake (planeta-anão) | **não usado ainda** — idem |
+| `2k_ceres_fictional.jpg` | Ceres (planeta-anão) — reaproveitada | **Tatooine** (camada ficção, homenagem Star Wars) — visual de deserto pálido |
+| `2k_eris_fictional.jpg` | Éris (planeta-anão) — reaproveitada | **Nibiru / Planeta X** (camada teórica) — visual gelado/distante |
+| `2k_haumea_fictional.jpg` | Haumea (planeta-anão) — reaproveitada | **Vulcano, o planeta hipotético** (camada teórica) — visual rochoso cinza |
+| `2k_makemake_fictional.jpg` | Makemake (planeta-anão) — reaproveitada | **Vulcan** (camada ficção, homenagem Star Trek, orbitando a estrela real 40 Eridani) — visual avermelhado |
 | `2k_stars.jpg` | — | **não usado** — mantido caso troque o céu por uma esfera separada de estrelas |
-| `2k_stars_milky_way.jpg` | — | panorama de fundo (skybox da Via Láctea) |
+| `2k_stars_milky_way.jpg` | — | glow difuso e escurecido de fundo (não é mais nítido — ver observações) |
 
 Observações:
 - O pacote da Solar System Scope **não inclui Plutão** nem luas além da nossa (Titã, Europa, Fobos etc. não existem nesse pacote — só nas fontes alternativas que o Artur mencionou, tipo o *Planet Texture Maps Wiki*, que tem licenças variadas e precisa checar arquivo por arquivo).
-- Texturas de exoplanetas (ex.: "Mintaka b" em Órion) são artísticas/fictícias — não existe imagem real desses planetas, só especulação.
+- Texturas de exoplanetas/mundos fictícios ou teóricos (Mintaka b, Vulcan, Tatooine, Vulcano hipotético, Nibiru) usam as texturas "fictícias" dos planetas-anões acima **por analogia visual** — não existe imagem real desses corpos, e essas texturas foram desenhadas pela Solar System Scope justamente como representação artística de mundos sem imagem real conhecida, o que combina bem com o caso de uso. Nenhuma textura oficial/licenciada de Star Trek ou Star Wars foi usada — evitado de propósito por risco de direito autoral.
+- `2k_stars_milky_way.jpg` não tem constelações reais nela (é céu genérico/procedural) — por isso não foi usada como fundo nítido, só como brilho difuso muito escurecido (opacity baixa).

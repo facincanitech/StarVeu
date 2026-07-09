@@ -420,12 +420,12 @@ const ZODIAC_CONSTELLATIONS = [
 const FICTION_CONSTELLATIONS = [
   { name:'40 Eridani', stars:[
     star('40Eri','40 Eridani A',0xffcf9e,'~5.100 K','Anã laranja (K0.5V) — real','≈16,3 anos-luz',9, 4.254, -7.653, {
-      planets:[ { name:'Vulcan (homenagem Star Trek)', color:0xb5462e, radius:2.1, orbitRadius:22, periodSec:16, fictional:true, universe:'Star Trek' } ]
+      planets:[ { name:'Vulcan (homenagem Star Trek)', color:0xb5462e, radius:2.1, orbitRadius:22, periodSec:16, fictional:true, universe:'Star Trek', texture:TEX+'2k_makemake_fictional.jpg' } ]
     }),
   ], lines:[] },
   { name:'Sistema Tatooine', layer:'fiction', universe:'Star Wars', stars:[
     star('TatooineA','Tatoo I',0xffdca0,'~5.800 K','Anã amarela — posição fictícia (Star Wars)','desconhecida (ficção)',9, 9.500, -20.000, {
-      planets:[ { name:'Tatooine (homenagem Star Wars)', color:0xd8b078, radius:1.9, orbitRadius:26, periodSec:20, fictional:true, universe:'Star Wars' } ]
+      planets:[ { name:'Tatooine (homenagem Star Wars)', color:0xd8b078, radius:1.9, orbitRadius:26, periodSec:20, fictional:true, universe:'Star Wars', texture:TEX+'2k_ceres_fictional.jpg' } ]
     }),
     star('TatooineB','Tatoo II',0xffedc2,'~5.200 K','Anã amarela — posição fictícia (Star Wars)','desconhecida (ficção)',7, 9.508, -20.030),
   ], lines:[['TatooineA','TatooineB']] },
@@ -499,14 +499,14 @@ const skyMeshes = populateSky(skyGroup, ALL_CONSTELLATIONS);
 const theoreticalGroup = registerLayerGroup('theoretical', new THREE.Group());
 solarGroup.add(theoreticalGroup);
 const THEORETICAL_BODIES = [
-  { name:'Vulcano (planeta hipotético)', color:0x8899aa, radius:0.6, orbitRadius:AU_TO_UNITS*0.28, periodSec:6,
+  { name:'Vulcano (planeta hipotético)', color:0x8899aa, radius:0.6, orbitRadius:AU_TO_UNITS*0.28, periodSec:6, texture:TEX+'2k_haumea_fictional.jpg',
     status:'Teórico — hipótese do século XIX (Le Verrier) pra explicar a órbita de Mercúrio; descartada depois que a Relatividade Geral (1915) explicou a anomalia sem precisar de um planeta extra. Não confundir com o "Vulcan" de ficção.' },
-  { name:'Nibiru / Planeta X', color:0x6a4a3a, radius:1.4, orbitRadius:AU_TO_UNITS*26, periodSec:34,
+  { name:'Nibiru / Planeta X', color:0x6a4a3a, radius:1.4, orbitRadius:AU_TO_UNITS*26, periodSec:34, texture:TEX+'2k_eris_fictional.jpg',
     status:'Teórico/especulativo — hipótese popular sem base científica aceita. Não confundir com a busca científica séria por um real "Planeta Nove" nos confins do sistema solar.' },
 ];
 const theoreticalMeshes = [];
 THEORETICAL_BODIES.forEach(b=>{
-  const mesh = new THREE.Mesh(new THREE.SphereGeometry(b.radius, 20, 20), new THREE.MeshStandardMaterial({ color:b.color, roughness:0.85 }));
+  const mesh = lowPolyMesh(b.radius, b.color, 0, b.texture);
   theoreticalGroup.add(mesh);
   theoreticalGroup.add(orbitLine(b.orbitRadius));
   const label = makeLabel(b.name);
@@ -530,7 +530,8 @@ const MOON_SHIPS = [
 const moonShips = [];
 MOON_SHIPS.forEach(s=>{
   const group = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.ConeGeometry(s.size*0.35, s.size*1.4, 8), new THREE.MeshStandardMaterial({ color:s.color, roughness:0.5, metalness:0.4 }));
+  // sem textura licenciada nenhuma — o "casco metálico" vem só do material (metalness/roughness)
+  const body = new THREE.Mesh(new THREE.ConeGeometry(s.size*0.35, s.size*1.4, 8), new THREE.MeshStandardMaterial({ color:s.color, roughness:0.32, metalness:0.75 }));
   body.rotation.x = Math.PI/2;
   group.add(body);
   const accent = new THREE.Mesh(new THREE.SphereGeometry(s.size*0.16, 8, 8), new THREE.MeshBasicMaterial({ color:s.accent }));
@@ -541,6 +542,33 @@ MOON_SHIPS.forEach(s=>{
   fictionSolarGroup.add(label);
   moonShips.push({ group, label, def:s });
 });
+
+// "Estrela da Morte" (homenagem Star Wars) — geometria 100% procedural (esfera + trincheira +
+// prato do superlaser), sem textura nenhuma licenciada. Reaproveita o mesmo loop de animação
+// das naves (mesmo formato { group, label, def }), só que orbitando mais largo e mais devagar.
+(function deathStarHomage(){
+  const R = 2.4;
+  const def = { name:'"Estação-D" (homenagem Star Wars)', universe:'Star Wars', size:R, orbitRadius:13, periodSec:26, tiltDeg:8,
+    status:'Ficção (Star Wars) — homenagem própria, geometria 100% procedural (sem textura oficial), sem afiliação com a franquia.' };
+  const group = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.SphereGeometry(R, 32, 32), new THREE.MeshStandardMaterial({ color:0x9aa0a6, roughness:0.55, metalness:0.5 }));
+  group.add(body);
+  const trench = new THREE.Mesh(new THREE.TorusGeometry(R, 0.05, 8, 64), new THREE.MeshStandardMaterial({ color:0x35383d, roughness:0.85 }));
+  trench.rotation.x = Math.PI/2 + 0.18;
+  group.add(trench);
+  const dishDir = new THREE.Vector3(1.6, 1.1, 1.0).normalize();
+  const dish = new THREE.Mesh(new THREE.CircleGeometry(R*0.3, 24), new THREE.MeshStandardMaterial({ color:0x5c6066, roughness:0.7, side:THREE.DoubleSide }));
+  dish.position.copy(dishDir).multiplyScalar(R*1.002);
+  dish.lookAt(dishDir.clone().multiplyScalar(R*2));
+  group.add(dish);
+  const emitter = new THREE.Mesh(new THREE.SphereGeometry(R*0.05, 10, 10), new THREE.MeshBasicMaterial({ color:0x202225 }));
+  emitter.position.copy(dishDir).multiplyScalar(R*1.01);
+  group.add(emitter);
+  fictionSolarGroup.add(group);
+  const label = makeLabel(def.name);
+  fictionSolarGroup.add(label);
+  moonShips.push({ group, label, def });
+})();
 
 // ---------- CAMADA FENÔMENOS: marcador de relatos não confirmados perto da Lua ----------
 const phenomenaGroup = registerLayerGroup('phenomena', new THREE.Group());
