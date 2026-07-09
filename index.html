@@ -527,7 +527,11 @@ const MOON_SHIPS = [
   { name:'Wayfarer-9', universe:'Original', color:0x8fd3ff, accent:0xffffff, size:1.2, orbitRadius:4, periodSec:11, tiltDeg:-10,
     status:'Original do projeto — não pertence a nenhuma franquia.' },
 ];
-const moonShips = [];
+const moonShips = []; // apesar do nome, hoje orbita qualquer corpo — ver campo `anchor` de cada def (padrão 'Moon')
+// resolve a posição ao vivo do corpo que a nave/estação tá orbitando (Lua ou qualquer planeta de BODIES)
+function anchorPosition(key){
+  return key === 'Moon' ? moonMesh.position : objects[key].mesh.position;
+}
 MOON_SHIPS.forEach(s=>{
   const group = new THREE.Group();
   // sem textura licenciada nenhuma — o "casco metálico" vem só do material (metalness/roughness)
@@ -542,6 +546,49 @@ MOON_SHIPS.forEach(s=>{
   fictionSolarGroup.add(label);
   moonShips.push({ group, label, def:s });
 });
+
+// "Estação Estelar" (homenagem Star Trek) — núcleo + anel de docagem, orbitando a Terra.
+// Geometria 100% procedural, sem textura/modelo oficial nenhum.
+(function starbaseHomage(){
+  const R = 1.3;
+  const def = { name:'"Estação Estelar"', universe:'Star Trek', size:R, anchor:'Earth', orbitRadius:6, periodSec:19, tiltDeg:15,
+    status:'Ficção (Star Trek) — homenagem própria a um posto avançado orbital, geometria 100% procedural, sem afiliação com a franquia.' };
+  const group = new THREE.Group();
+  const core = new THREE.Mesh(new THREE.CylinderGeometry(R*0.4, R*0.4, R*1.1, 12), new THREE.MeshStandardMaterial({ color:0xcfd6dc, roughness:0.35, metalness:0.7 }));
+  group.add(core);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(R*1.15, R*0.14, 10, 32), new THREE.MeshStandardMaterial({ color:0x8fa0ac, roughness:0.4, metalness:0.65 }));
+  ring.rotation.x = Math.PI/2;
+  group.add(ring);
+  const beacon = new THREE.Mesh(new THREE.SphereGeometry(R*0.14, 10, 10), new THREE.MeshBasicMaterial({ color:0xffcf70 }));
+  beacon.position.set(0, R*0.7, 0);
+  group.add(beacon);
+  fictionSolarGroup.add(group);
+  const label = makeLabel(def.name);
+  fictionSolarGroup.add(label);
+  moonShips.push({ group, label, def });
+})();
+
+// "Cidade Flutuante" (homenagem Star Wars, tipo Cidade das Nuvens) — disco + haste, flutuando
+// perto de Saturno (gigante gasoso combina com a estética de cidade suspensa na atmosfera).
+(function cloudCityHomage(){
+  const R = 1.8;
+  const def = { name:'"Cidade Flutuante"', universe:'Star Wars', size:R, anchor:'Saturn', orbitRadius:17, periodSec:30, tiltDeg:-12,
+    status:'Ficção (Star Wars) — homenagem própria a uma cidade suspensa numa atmosfera de gigante gasoso, geometria 100% procedural, sem afiliação com a franquia.' };
+  const group = new THREE.Group();
+  const disc = new THREE.Mesh(new THREE.CylinderGeometry(R, R*0.7, R*0.18, 20), new THREE.MeshStandardMaterial({ color:0xe8d9b8, roughness:0.5, metalness:0.3 }));
+  group.add(disc);
+  const stalk = new THREE.Mesh(new THREE.CylinderGeometry(R*0.06, R*0.06, R*0.9, 8), new THREE.MeshStandardMaterial({ color:0x8a7d68, roughness:0.6 }));
+  stalk.position.y = -R*0.5;
+  group.add(stalk);
+  const glow = new THREE.Mesh(new THREE.RingGeometry(R*0.75, R*0.95, 24), new THREE.MeshBasicMaterial({ color:0xff8844, side:THREE.DoubleSide, transparent:true, opacity:0.7 }));
+  glow.rotation.x = Math.PI/2;
+  glow.position.y = R*0.1;
+  group.add(glow);
+  fictionSolarGroup.add(group);
+  const label = makeLabel(def.name);
+  fictionSolarGroup.add(label);
+  moonShips.push({ group, label, def });
+})();
 
 // "Estrela da Morte" (homenagem Star Wars) — geometria 100% procedural (esfera + trincheira +
 // prato do superlaser), sem textura nenhuma licenciada. Reaproveita o mesmo loop de animação
@@ -1018,14 +1065,16 @@ function animate(){
     tb.label.position.set(x, tb.def.radius + 1.5, z);
   });
 
-  // naves da Lua (camada ficção) — órbita simples ao redor da posição atual da Lua
+  // naves/estações da camada ficção — órbita simples ao redor da posição atual do corpo-âncora
+  // (Lua por padrão, mas pode ser qualquer planeta via def.anchor — Terra, Saturno etc.)
   moonShips.forEach(sh=>{
     const angle = (starSystemElapsed / sh.def.periodSec) * Math.PI * 2;
     const tilt = sh.def.tiltDeg * Math.PI/180;
     const r = sh.def.orbitRadius;
+    const anchor = anchorPosition(sh.def.anchor || 'Moon');
     const lx = Math.cos(angle)*r, lzFlat = Math.sin(angle)*r;
     const ly = lzFlat*Math.sin(tilt), lz = lzFlat*Math.cos(tilt);
-    sh.group.position.set(moonMesh.position.x+lx, moonMesh.position.y+ly, moonMesh.position.z+lz);
+    sh.group.position.set(anchor.x+lx, anchor.y+ly, anchor.z+lz);
     sh.group.rotation.y = -angle;
     sh.label.position.set(sh.group.position.x, sh.group.position.y + sh.def.size + 1.2, sh.group.position.z);
   });
