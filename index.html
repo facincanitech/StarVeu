@@ -102,6 +102,7 @@
     <button class="layerCatBtn" data-layer="theoretical">🧪 Teórico</button>
     <button class="layerCatBtn" data-layer="fiction">🖖 Ficção</button>
     <button class="layerCatBtn" data-layer="phenomena">👁 Fenômenos</button>
+    <button class="layerCatBtn" data-layer="realExtra">☄️ Catálogo real</button>
     <button id="labelsToggle" class="layerCatBtn open">🏷 Nomes</button>
   </div>
   <div id="layerPanel"></div>
@@ -133,20 +134,21 @@
 // ---------- DADOS REAIS DOS CORPOS ----------
 // distância/período/diâmetro são valores de referência (médios) só pro painel de info.
 // a POSIÇÃO em si é sempre calculada ao vivo via astronomy-engine (HelioVector), nunca fixa.
-const AU_TO_UNITS = 42; // escala linear: 1 UA real = 42 unidades de cena
+const AU_TO_UNITS = 68; // escala linear: 1 UA real = 68 unidades de cena (era 42 — sistema ficava comprimido/apertado demais)
 const TEX = 'texturas/'; // pacote CC-BY 4.0 da Solar System Scope — ver CREDITS.md
+// rotationHours = período de rotação sideral REAL (pro giro do planeta na tela bater com a realidade em "tempo real")
 const BODIES = [
-  { key:'Sun',     name:'Sol',      color:0xffcf70, radius:9,   emissive:0xffb347, isSun:true, texture:TEX+'2k_sun.jpg' },
-  { key:'Mercury', name:'Mercúrio', color:0x9e9e9e, radius:1.1, auRef:0.39, periodRef:'88 dias',    diamRef:'4.879 km',   texture:TEX+'2k_mercury.jpg' },
-  { key:'Venus',   name:'Vênus',    color:0xe0c48a, radius:1.9, auRef:0.72, periodRef:'225 dias',   diamRef:'12.104 km', texture:TEX+'2k_venus_surface.jpg', atmosphere:TEX+'2k_venus_atmosphere.jpg' },
-  { key:'Earth',   name:'Terra',    color:0x3f7fd6, radius:2.0, auRef:1.00, periodRef:'365,25 dias',diamRef:'12.742 km', texture:TEX+'2k_earth_daymap.jpg', nightTexture:TEX+'2k_earth_nightmap.jpg', clouds:TEX+'2k_earth_clouds.jpg' },
-  { key:'Mars',    name:'Marte',    color:0xc1552c, radius:1.4, auRef:1.52, periodRef:'687 dias',   diamRef:'6.779 km',  texture:TEX+'2k_mars.jpg' },
-  { key:'Jupiter', name:'Júpiter',  color:0xd9b38c, radius:5.4, auRef:5.20, periodRef:'11,9 anos',  diamRef:'139.820 km',texture:TEX+'2k_jupiter.jpg' },
-  { key:'Saturn',  name:'Saturno',  color:0xe8d5a3, radius:4.6, auRef:9.58, periodRef:'29,5 anos',  diamRef:'116.460 km', ring:true, texture:TEX+'2k_saturn.jpg', ringTexture:TEX+'2k_saturn_ring_alpha.png' },
-  { key:'Uranus',  name:'Urano',    color:0x9fd4e0, radius:3.0, auRef:19.2, periodRef:'84 anos',    diamRef:'50.724 km', texture:TEX+'2k_uranus.jpg' },
-  { key:'Neptune', name:'Netuno',   color:0x5c7cf0, radius:2.9, auRef:30.05,periodRef:'165 anos',   diamRef:'49.244 km', texture:TEX+'2k_neptune.jpg' },
+  { key:'Sun',     name:'Sol',      color:0xffcf70, radius:9,   emissive:0xffb347, isSun:true, texture:TEX+'2k_sun.jpg', rotationHours:609.12 },
+  { key:'Mercury', name:'Mercúrio', color:0x9e9e9e, radius:1.1, auRef:0.39, periodRef:'88 dias',    diamRef:'4.879 km',   texture:TEX+'2k_mercury.jpg', rotationHours:1407.6 },
+  { key:'Venus',   name:'Vênus',    color:0xe0c48a, radius:1.9, auRef:0.72, periodRef:'225 dias',   diamRef:'12.104 km', texture:TEX+'2k_venus_surface.jpg', atmosphere:TEX+'2k_venus_atmosphere.jpg', rotationHours:5832.5 },
+  { key:'Earth',   name:'Terra',    color:0x3f7fd6, radius:2.0, auRef:1.00, periodRef:'365,25 dias',diamRef:'12.742 km', texture:TEX+'2k_earth_daymap.jpg', nightTexture:TEX+'2k_earth_nightmap.jpg', clouds:TEX+'2k_earth_clouds.jpg', rotationHours:23.9345 },
+  { key:'Mars',    name:'Marte',    color:0xc1552c, radius:1.4, auRef:1.52, periodRef:'687 dias',   diamRef:'6.779 km',  texture:TEX+'2k_mars.jpg', rotationHours:24.6229 },
+  { key:'Jupiter', name:'Júpiter',  color:0xd9b38c, radius:5.4, auRef:5.20, periodRef:'11,9 anos',  diamRef:'139.820 km',texture:TEX+'2k_jupiter.jpg', rotationHours:9.925 },
+  { key:'Saturn',  name:'Saturno',  color:0xe8d5a3, radius:4.6, auRef:9.58, periodRef:'29,5 anos',  diamRef:'116.460 km', ring:true, texture:TEX+'2k_saturn.jpg', ringTexture:TEX+'2k_saturn_ring_alpha.png', rotationHours:10.656 },
+  { key:'Uranus',  name:'Urano',    color:0x9fd4e0, radius:3.0, auRef:19.2, periodRef:'84 anos',    diamRef:'50.724 km', texture:TEX+'2k_uranus.jpg', rotationHours:17.24 },
+  { key:'Neptune', name:'Netuno',   color:0x5c7cf0, radius:2.9, auRef:30.05,periodRef:'165 anos',   diamRef:'49.244 km', texture:TEX+'2k_neptune.jpg', rotationHours:16.11 },
 ];
-const MOON_VISUAL_RADIUS_UNITS = 9.5; // órbita da Lua é artisticamente ampliada (real seria invisível nessa escala)
+const MOON_VISUAL_RADIUS_UNITS = 17; // órbita da Lua artisticamente ampliada (era 9.5 — ficava colada na Terra, quase dentro da frota de naves)
 const MOON_TEXTURE = TEX+'2k_moon.jpg';
 const texLoader = new THREE.TextureLoader();
 
@@ -552,6 +554,147 @@ THEORETICAL_BODIES.forEach(b=>{
   theoreticalMeshes.push({ mesh, label, def:b });
 });
 
+// ---------- CAMADA "CATÁLOGO REAL" (escala do sistema solar): objetos interestelares confirmados,
+// maiores corpos do cinturão de asteroides, e principais luas dos planetas gigantes — tudo com
+// elementos orbitais REAIS (fonte: JPL Small-Body Database / NASA planetary fact sheets).
+// Pequenos corpos (interestelares + cinturão) usam mecânica Kepleriana completa (elipse ou
+// hipérbole, conforme a excentricidade seja menor ou maior que 1) a partir do periélio real. Luas usam órbita circular com
+// período/inclinação/proporção de distância reais — fase inicial é aproximada (não é uma
+// efeméride oficial minuto a minuto, ao contrário dos planetas/Lua da Terra via astronomy-engine).
+const MU_SUN = 0.00029591220828559104; // GM do Sol em UA³/dia² (constante gravitacional gaussiana ao quadrado)
+const OBLIQUITY_RAD = 23.4392911 * Math.PI/180; // obliquidade J2000: converte eclíptica -> equatorial, mesmo referencial que o astronomy-engine usa pros planetas
+const J2000_MS = Date.UTC(2000,0,1,12,0,0);
+function dateToJD(d){ return d.getTime()/86400000 + 2440587.5; }
+function solveKeplerEllipse(M, e){
+  let E = e < 0.8 ? M : Math.PI;
+  for (let i=0;i<50;i++){
+    const dE = (E - e*Math.sin(E) - M)/(1 - e*Math.cos(E));
+    E -= dE;
+    if (Math.abs(dE) < 1e-9) break;
+  }
+  return E;
+}
+function solveKeplerHyperbolic(M, e){
+  let H = (Math.sign(M)||1) * Math.log(2*Math.abs(M)/e + 1.8);
+  for (let i=0;i<80;i++){
+    const dH = (e*Math.sinh(H) - H - M)/(e*Math.cosh(H) - 1);
+    H -= dH;
+    if (Math.abs(dH) < 1e-9) break;
+  }
+  return H;
+}
+// el: { e, a (UA, corpos elípticos) ou q (UA, periélio — pra hiperbólicos), i, om, w (graus), tpJD (data do periélio em dia juliano) }
+function keplerHelioAU(el, dateJD){
+  const a = el.a !== undefined ? el.a : el.q/(1 - el.e);
+  const n = Math.sqrt(MU_SUN/Math.abs(a*a*a)); // rad/dia
+  const M = n * (dateJD - el.tpJD);
+  let r, nu;
+  if (el.e < 1){
+    const E = solveKeplerEllipse(M % (2*Math.PI), el.e);
+    r = a*(1 - el.e*Math.cos(E));
+    nu = 2*Math.atan2(Math.sqrt(1+el.e)*Math.sin(E/2), Math.sqrt(1-el.e)*Math.cos(E/2));
+  } else {
+    const H = solveKeplerHyperbolic(M, el.e);
+    r = a*(1 - el.e*Math.cosh(H));
+    nu = 2*Math.atan2(Math.sqrt(el.e+1)*Math.sinh(H/2), Math.sqrt(el.e-1)*Math.cosh(H/2));
+  }
+  const xo = r*Math.cos(nu), yo = r*Math.sin(nu);
+  const om = el.om*Math.PI/180, w = el.w*Math.PI/180, inc = el.i*Math.PI/180;
+  const cosOm=Math.cos(om), sinOm=Math.sin(om), cosW=Math.cos(w), sinW=Math.sin(w), cosI=Math.cos(inc), sinI=Math.sin(inc);
+  const xEcl = (cosOm*cosW - sinOm*sinW*cosI)*xo + (-cosOm*sinW - sinOm*cosW*cosI)*yo;
+  const yEcl = (sinOm*cosW + cosOm*sinW*cosI)*xo + (-sinOm*sinW + cosOm*cosW*cosI)*yo;
+  const zEcl = (sinW*sinI)*xo + (cosW*sinI)*yo;
+  const yEq = yEcl*Math.cos(OBLIQUITY_RAD) - zEcl*Math.sin(OBLIQUITY_RAD);
+  const zEq = yEcl*Math.sin(OBLIQUITY_RAD) + zEcl*Math.cos(OBLIQUITY_RAD);
+  return { x:xEcl, y:yEq, z:zEq }; // já no formato (v.x, v.y, v.z) equatorial usado pro resto do código (updatePositions remapeia igual aos planetas)
+}
+
+const REAL_SMALL_BODIES = [
+  { name:'1I/\'Oumuamua', color:0xcabfa8, radius:0.4,
+    e:1.201133796102373, q:0.2559115812959116, i:122.7417062847286, om:24.59690955523242, w:241.8105360304898, tpJD:2458006.007321375231,
+    status:'Real — primeiro objeto interestelar confirmado (2017), trajetória hiperbólica vinda de fora do sistema solar. Elementos orbitais oficiais (JPL Small-Body Database); passou e nunca mais volta.' },
+  { name:'2I/Borisov', color:0x9fc4dd, radius:0.45,
+    e:3.356475782676596, q:2.006520878500843, i:44.05264247909138, om:308.1477292269942, w:209.1236864378081, tpJD:2458826.052845906059,
+    status:'Real — segundo objeto interestelar confirmado (2019), único até hoje com coma de cometa visível. Elementos orbitais oficiais (JPL Small-Body Database).' },
+  { name:'3I/ATLAS', color:0xb5896a, radius:0.5,
+    e:6.141351449317625, q:1.356481057231181, i:175.1164570850441, om:322.1696089290778, w:128.0228697185194, tpJD:2460977.995262847653,
+    status:'Real — terceiro objeto interestelar confirmado, descoberto em julho de 2025; a maior excentricidade/velocidade já registrada num objeto assim. Elementos orbitais da JPL Small-Body Database, ainda sujeitos a refinamento conforme mais observações chegam.' },
+  { name:'Ceres', color:0x9c9284, radius:0.85,
+    e:0.07969229514816586, a:2.765552595034094, i:10.58802780183462, om:80.24862682043221, w:73.29421453021587, tpJD:2461599.841466614066,
+    status:'Real — maior objeto do cinturão de asteroides, único classificado como planeta anão nessa região. Elementos orbitais oficiais (JPL Small-Body Database).' },
+  { name:'Vesta', color:0xb0a488, radius:0.55,
+    e:0.09020374382834395, a:2.361365965127599, i:7.143925545058711, om:103.701293265032, w:151.4686478221564, tpJD:2460901.587379842988,
+    status:'Real — segundo maior corpo do cinturão de asteroides, e o mais brilhante visto da Terra. Elementos orbitais oficiais (JPL Small-Body Database).' },
+  { name:'Palas', color:0x8f97a3, radius:0.5,
+    e:0.2307000995648547, a:2.769559010737709, i:34.93279321851542, om:172.8866193357694, w:310.9699161652136, tpJD:2461695.031164382680,
+    status:'Real — terceiro maior corpo do cinturão de asteroides, com órbita bem mais inclinada que a média da região. Elementos orbitais oficiais (JPL Small-Body Database).' },
+];
+const realSmallBodies = [];
+REAL_SMALL_BODIES.forEach(b=>{
+  const group = registerItemGroup('realExtra', b.name, new THREE.Group());
+  solarGroup.add(group);
+  const mesh = lowPolyMesh(b.radius, b.color, 0);
+  group.add(mesh);
+  const label = makeLabel(b.name);
+  group.add(label);
+  realSmallBodies.push({ mesh, label, def:b });
+});
+
+// principais luas dos planetas gigantes — raio de órbita = proporção REAL distância/raio do
+// planeta (não é artístico), período orbital real. Excentricidade real é pequena o bastante
+// pra não fazer diferença visual nessa escala, por isso a órbita é tratada como circular.
+const REAL_MOONS = [
+  { name:'Io', anchor:'Jupiter', color:0xd9c05a, radius:0.35, orbitRatio:6.03, periodDays:1.769137786, tiltDeg:0.04,
+    status:'Real — lua de Júpiter, o corpo vulcanicamente mais ativo do sistema solar. Período orbital e proporção de distância reais; fase (posição exata agora) é aproximada, não é efeméride oficial.' },
+  { name:'Europa', anchor:'Jupiter', color:0xcdb896, radius:0.3, orbitRatio:9.6, periodDays:3.551181, tiltDeg:0.47,
+    status:'Real — lua de Júpiter com oceano de água líquida sob a crosta de gelo, forte candidata a astrobiologia. Período orbital e proporção de distância reais; fase aproximada.' },
+  { name:'Ganimedes', anchor:'Jupiter', color:0x9a927f, radius:0.5, orbitRatio:15.31, periodDays:7.15455, tiltDeg:0.18,
+    status:'Real — maior lua do sistema solar, maior até que Mercúrio. Período orbital e proporção de distância reais; fase aproximada.' },
+  { name:'Calisto', anchor:'Jupiter', color:0x6f6a60, radius:0.47, orbitRatio:26.93, periodDays:16.6890184, tiltDeg:0.19,
+    status:'Real — lua mais craterizada do sistema solar, superfície geologicamente "morta". Período orbital e proporção de distância reais; fase aproximada.' },
+  { name:'Titã', anchor:'Saturn', color:0xd6a962, radius:0.52, orbitRatio:20.98, periodDays:15.945, tiltDeg:0.35,
+    status:'Real — maior lua de Saturno, única lua do sistema solar com atmosfera densa e lagos de metano líquido na superfície. Período orbital e proporção de distância reais; fase aproximada.' },
+  { name:'Encélado', anchor:'Saturn', color:0xe8f0f5, radius:0.22, orbitRatio:4.09, periodDays:1.370218, tiltDeg:0.01,
+    status:'Real — lua gelada de Saturno com gêiseres ativos de água, outra forte candidata a astrobiologia. Período orbital e proporção de distância reais; fase aproximada.' },
+  { name:'Tritão', anchor:'Neptune', color:0xb9c7cf, radius:0.4, orbitRatio:14.41, periodDays:5.877, tiltDeg:157, retrograde:true,
+    status:'Real — maior lua de Netuno, órbita retrógrada (contrária à rotação do planeta) — forte indício de que foi capturada do Cinturão de Kuiper. Período orbital e proporção de distância reais; fase aproximada.' },
+];
+const realMoons = [];
+REAL_MOONS.forEach(m=>{
+  const group = registerItemGroup('realExtra', m.name, new THREE.Group());
+  solarGroup.add(group);
+  const mesh = lowPolyMesh(m.radius, m.color, 0);
+  group.add(mesh);
+  const label = makeLabel(m.name);
+  group.add(label);
+  realMoons.push({ mesh, label, def:m });
+});
+
+// nuvem de detrito de Saturno — partículas na mesma faixa/inclinação do anel já existente
+// (o anel É um disco de detrito de gelo/rocha; isso só adiciona leitura volumétrica a mais
+// do que a textura plana já dá). Filha do mesh de Saturno: acompanha o planeta automaticamente.
+(function saturnDebrisCloud(){
+  const satRadius = BODIES.find(b=>b.key==='Saturn').radius;
+  const count = 2200;
+  const positions = new Float32Array(count*3);
+  for (let i=0;i<count;i++){
+    const r = satRadius*1.6 + Math.random()*(satRadius*1.1); // mesma faixa do RingGeometry já usado (1.6x a 2.6x o raio)
+    const a = Math.random()*Math.PI*2;
+    const h = (Math.random()-0.5)*satRadius*0.02;
+    positions[i*3] = Math.cos(a)*r;
+    positions[i*3+1] = h;
+    positions[i*3+2] = Math.sin(a)*r;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  const mat = new THREE.PointsMaterial({ color:0xd9d0b8, size:0.035, transparent:true, opacity:0.55, sizeAttenuation:true });
+  const points = new THREE.Points(geo, mat);
+  points.rotation.x = Math.PI/2 - 0.4; // mesma inclinação do anel de textura já existente
+  const group = registerItemGroup('realExtra', 'Nuvem de detritos (Saturno)', new THREE.Group());
+  group.add(points);
+  objects['Saturn'].mesh.add(group);
+})();
+
 // ---------- CAMADA FICÇÃO (escala do sistema solar): naves homenageando franquias + 1 original ----------
 // 1 subgrupo por universo (registrado via registerItemGroup), não 1 só pra ficção inteira —
 // assim dá pra ligar só "Star Trek" e desligar o resto, por exemplo.
@@ -565,19 +708,19 @@ function fictionGroupFor(universe){
   return fictionUniverseGroups[universe];
 }
 const MOON_SHIPS = [
-  { name:'"Nave-E"', universe:'Star Trek', color:0xd8d8d8, accent:0xffcf70, size:0.95, anchor:'Earth', orbitRadius:7, periodSec:14, tiltDeg:20,
+  { name:'"Nave-E"', universe:'Star Trek', color:0xd8d8d8, accent:0xffcf70, size:0.95, anchor:'Earth', orbitRadius:10, periodSec:14, tiltDeg:20,
     status:'Ficção (Star Trek) — homenagem própria, sem afiliação oficial com a franquia.' },
-  { name:'"Classe Delta"', universe:'Star Trek', color:0xc9d1d8, accent:0x7fbfff, size:0.78, anchor:'Mars', orbitRadius:6, periodSec:16, tiltDeg:-24,
+  { name:'"Classe Delta"', universe:'Star Trek', color:0xc9d1d8, accent:0x7fbfff, size:0.78, anchor:'Mars', orbitRadius:7, periodSec:16, tiltDeg:-24,
     status:'Ficção (Star Trek) — variação própria de nave exploratória, sem afiliação oficial com a franquia.' },
-  { name:'"Posto Profundo"', universe:'Star Trek', color:0xaeb8c2, accent:0xffcf70, size:0.72, anchor:'Jupiter', orbitRadius:13, periodSec:24, tiltDeg:34,
+  { name:'"Posto Profundo"', universe:'Star Trek', color:0xaeb8c2, accent:0xffcf70, size:0.72, anchor:'Jupiter', orbitRadius:14, periodSec:24, tiltDeg:34,
     status:'Ficção (Star Trek) — pequena base avançada procedural, sem afiliação oficial com a franquia.' },
-  { name:'"Falcão"', universe:'Star Wars', color:0x9a9a8c, accent:0xff5533, size:0.82, anchor:'Moon', orbitRadius:12, periodSec:9, tiltDeg:-35,
+  { name:'"Falcão"', universe:'Star Wars', color:0x9a9a8c, accent:0xff5533, size:0.82, anchor:'Moon', orbitRadius:6, periodSec:9, tiltDeg:-35,
     status:'Ficção (Star Wars) — homenagem própria, sem afiliação oficial com a franquia.' },
-  { name:'"Jupiter 2"', universe:'Lost in Space', color:0xc9d6de, accent:0x3fd6c8, size:0.9, anchor:'Earth', orbitRadius:9.5, periodSec:18, tiltDeg:55,
+  { name:'"Jupiter 2"', universe:'Lost in Space', color:0xc9d6de, accent:0x3fd6c8, size:0.9, anchor:'Earth', orbitRadius:13, periodSec:18, tiltDeg:55,
     status:'Ficção (Lost in Space) — homenagem própria, sem afiliação oficial com a franquia.' },
-  { name:'"Resolute"', universe:'Lost in Space', color:0xb8c8d4, accent:0x7fd8ff, size:0.82, anchor:'Saturn', orbitRadius:13, periodSec:26, tiltDeg:-18,
+  { name:'"Resolute"', universe:'Lost in Space', color:0xb8c8d4, accent:0x7fd8ff, size:0.82, anchor:'Saturn', orbitRadius:14, periodSec:26, tiltDeg:-18,
     status:'Ficção (Lost in Space) — estação/nave-colônia procedural inspirada no conceito de transporte colonial.' },
-  { name:'Wayfarer-9', universe:'Original', color:0x8fd3ff, accent:0xffffff, size:0.75, anchor:'Moon', orbitRadius:7.5, periodSec:11, tiltDeg:-10,
+  { name:'Wayfarer-9', universe:'Original', color:0x8fd3ff, accent:0xffffff, size:0.75, anchor:'Moon', orbitRadius:5, periodSec:11, tiltDeg:-10,
     status:'Original do projeto — não pertence a nenhuma franquia.' },
 ];
 const moonShips = []; // apesar do nome, hoje orbita qualquer corpo — ver campo `anchor` de cada def (padrão 'Moon')
@@ -674,7 +817,7 @@ MOON_SHIPS.forEach(s=>{
 // Geometria 100% procedural, sem textura/modelo oficial nenhum.
 (function starbaseHomage(){
   const R = 1.3;
-  const def = { name:'"Estação Estelar"', universe:'Star Trek', size:R, anchor:'Earth', orbitRadius:6, periodSec:19, tiltDeg:15,
+  const def = { name:'"Estação Estelar"', universe:'Star Trek', size:R, anchor:'Earth', orbitRadius:8, periodSec:19, tiltDeg:15,
     status:'Ficção (Star Trek) — homenagem própria a um posto avançado orbital, geometria 100% procedural, sem afiliação com a franquia.' };
   const group = new THREE.Group();
   addPart(group, new THREE.CylinderGeometry(R*0.34,R*0.44,R*1.35,24), metalMat(0xcfd6dc,0.32,0.72), [0,0,0]);
@@ -692,6 +835,34 @@ MOON_SHIPS.forEach(s=>{
   fictionGroupFor(def.universe).add(group);
   const label = makeLabel(def.name);
   label.position.set(0, R + 1.45, 0);
+  group.add(label);
+  moonShips.push({ group, label, def });
+})();
+
+// ISS (Estação Espacial Internacional) — real, não é ficção. Órbita baixa da Terra, geometria
+// 100% procedural (módulo central + treliça + painéis solares), inclinação real de ~51,6°.
+// Vai direto em solarGroup (não em fictionGroupFor) pra ficar sempre visível, como a Lua.
+(function issStation(){
+  const R = 0.32;
+  const def = { name:'ISS (Estação Espacial Internacional)', universe:'real', size:R, anchor:'Earth', orbitRadius:2.55, periodSec:7, tiltDeg:51.6,
+    status:'Real — Estação Espacial Internacional, órbita baixa da Terra (altitude real ~400 km; aqui ampliada visualmente pra ficar visível na escala do planeta).' };
+  const group = new THREE.Group();
+  const hull = metalMat(0xd6dbe0,0.4,0.6);
+  const truss = metalMat(0xb8bfc6,0.5,0.55);
+  addPart(group, new THREE.CylinderGeometry(R*0.16,R*0.16,R*0.06,16), truss, [0,0,0], [0,0,Math.PI/2]);
+  for (let i=-3;i<=3;i++){
+    addPart(group, new THREE.BoxGeometry(R*0.05,R*0.05,R*0.05), truss, [i*R*0.3,0,0]);
+  }
+  addPart(group, new THREE.CylinderGeometry(R*0.09,R*0.09,R*0.55,12), hull, [-R*0.55,0,0], [0,0,Math.PI/2]);
+  addPart(group, new THREE.CylinderGeometry(R*0.09,R*0.09,R*0.4,12), hull, [R*0.5,0,0], [0,0,Math.PI/2]);
+  [-1,1].forEach(side=>{
+    addSolarPanel(group, side*R*1.35, 0, R*0.16, R*0.5, R*1.15, side);
+    addSolarPanel(group, side*R*1.35, 0, -R*0.16, R*0.5, R*1.15, side);
+  });
+  addPart(group, new THREE.SphereGeometry(R*0.05,10,8), glowMat(0x7fbfff,0.9), [R*0.7,0,0]);
+  solarGroup.add(group);
+  const label = makeLabel(def.name);
+  label.position.set(0, R*1.6 + 0.6, 0);
   group.add(label);
   moonShips.push({ group, label, def });
 })();
@@ -808,13 +979,13 @@ function buildAlienVessel(def){
 }
 (function originalAlienFleet(){
   const defs = [
-    { name:'Nave Colmeia', form:'mothership', universe:'Original', color:0x6d7782, accent:0x8dfff4, size:0.9, anchor:'Moon', orbitRadius:15, periodSec:24, tiltDeg:28, seed:1201,
+    { name:'Nave Colmeia', form:'mothership', universe:'Original', color:0x6d7782, accent:0x8dfff4, size:0.9, anchor:'Moon', orbitRadius:7, periodSec:24, tiltDeg:28, seed:1201,
       status:'Original do projeto — megaestrutura alienígena em disco, inspirada em ficção de invasão sem copiar nenhum design oficial.' },
     { name:'Disco Atmosférico', form:'mothership', universe:'Original', color:0x565f68, accent:0xfff0a0, size:0.72, anchor:'Mars', orbitRadius:7, periodSec:17, tiltDeg:-18, seed:4312,
       status:'Original do projeto — nave discoidal pesada para entrada atmosférica e observação orbital.' },
-    { name:'Crescente Negro', form:'crescent', universe:'Original', color:0x4d5b69, accent:0xb08dff, size:0.82, anchor:'Moon', orbitRadius:11, periodSec:21, tiltDeg:42, seed:8821,
+    { name:'Crescente Negro', form:'crescent', universe:'Original', color:0x4d5b69, accent:0xb08dff, size:0.82, anchor:'Moon', orbitRadius:6, periodSec:21, tiltDeg:42, seed:8821,
       status:'Original do projeto — cruzador em arco com núcleo luminoso e pontas assimétricas.' },
-    { name:'Lâmina Abissal', form:'blade', universe:'Original', color:0x7a8490, accent:0x6aff9e, size:0.72, anchor:'Moon', orbitRadius:8.5, periodSec:13, tiltDeg:-46, seed:991,
+    { name:'Lâmina Abissal', form:'blade', universe:'Original', color:0x7a8490, accent:0x6aff9e, size:0.72, anchor:'Moon', orbitRadius:5.5, periodSec:13, tiltDeg:-46, seed:991,
       status:'Original do projeto — interceptador angular, sem referência direta a nave licenciada.' },
     { name:'Sonda Tridente', form:'trident', universe:'Original', color:0x91a6b8, accent:0xff7fd6, size:0.65, anchor:'Jupiter', orbitRadius:10, periodSec:16, tiltDeg:12, seed:7717,
       status:'Original do projeto — sonda de três antenas para fenômenos de alta energia.' },
@@ -896,7 +1067,6 @@ function updatePositions(date){
     const x = v.x * AU_TO_UNITS, y = v.z * AU_TO_UNITS, z = v.y * AU_TO_UNITS;
     obj.mesh.position.set(x, y*0.35, z); // achata levemente a inclinação p/ leitura visual mais clara
     obj.label.position.set(x, y*0.35 + def.radius + 4, z);
-    obj.mesh.rotation.y += 0.004;
   });
 
   // lua: usa a DIREÇÃO real (GeoMoon) em torno da terra, raio artístico p/ ficar visível
@@ -912,6 +1082,32 @@ function updatePositions(date){
     );
     moonLabel.position.set(moonMesh.position.x, moonMesh.position.y+1.6, moonMesh.position.z);
   }catch(e){}
+
+  // catálogo real ampliado: interestelares + maiores asteroides do cinturão (mecânica Kepleriana real)
+  const dateJD = dateToJD(date);
+  realSmallBodies.forEach(b=>{
+    try{
+      const v = keplerHelioAU(b.def, dateJD);
+      const x = v.x*AU_TO_UNITS, y = v.z*AU_TO_UNITS, z = v.y*AU_TO_UNITS;
+      b.mesh.position.set(x, y*0.35, z);
+      b.label.position.set(x, y*0.35 + b.def.radius + 3, z);
+    }catch(e){}
+  });
+
+  // luas reais dos planetas gigantes: órbita circular em torno da posição ao vivo do planeta-mãe
+  const daysSinceJ2000 = (date.getTime() - J2000_MS) / 86400000;
+  realMoons.forEach(m=>{
+    const anchorObj = objects[m.def.anchor];
+    if (!anchorObj) return;
+    const parent = anchorObj.mesh.position;
+    const angle = (daysSinceJ2000 / m.def.periodDays) * Math.PI*2 * (m.def.retrograde ? -1 : 1);
+    const tilt = m.def.tiltDeg*Math.PI/180;
+    const r = m.def.orbitRatio * anchorObj.def.radius;
+    const lx = Math.cos(angle)*r, lzFlat = Math.sin(angle)*r;
+    const ly = lzFlat*Math.sin(tilt), lz = lzFlat*Math.cos(tilt);
+    m.mesh.position.set(parent.x+lx, parent.y+ly, parent.z+lz);
+    m.label.position.set(m.mesh.position.x, m.mesh.position.y + m.def.radius + 1, m.mesh.position.z);
+  });
 
   clockTextEl.textContent = date.toLocaleString('pt-BR', { dateStyle:'medium', timeStyle:'medium' });
 }
@@ -932,6 +1128,7 @@ const LAYER_ITEMS = {
   theoretical: THEORETICAL_BODIES.map(b=>b.name),
   fiction: ['Star Trek','Star Wars','Lost in Space','Stargate','Original'],
   phenomena: [PHENOMENA_NAME],
+  realExtra: REAL_SMALL_BODIES.map(b=>b.name).concat(REAL_MOONS.map(m=>m.name)).concat(['Nuvem de detritos (Saturno)']),
 };
 const layerPanelEl = document.getElementById('layerPanel');
 let openLayer = null;
@@ -1231,7 +1428,9 @@ function pickAt(x,y){
     // camadas teórico/ficção/fenômenos (Vulcano hipotético, Nibiru, naves da Lua, marcador de fenômeno)
     const extra = theoreticalMeshes
       .concat(moonShips.map(o=>({ mesh:o.group, def:o.def })))
-      .concat(phenomenaMeshes);
+      .concat(phenomenaMeshes)
+      .concat(realSmallBodies)
+      .concat(realMoons);
     const extraObjects = extra.map(o=>o.mesh);
     const extraHit = raycaster.intersectObjects(extraObjects, true)[0];
     if (extraHit){
@@ -1344,6 +1543,16 @@ function animate(){
   const dt = clock.getDelta();
 
   simElapsedMs += dt*1000*timeMultiplier;
+
+  // rotação própria de cada planeta usa o período sideral REAL — em "tempo real" o giro
+  // bate com a velocidade de rotação de verdade (antes era um incremento fixo, sem relação com o planeta)
+  const simSecondsThisFrame = dt*timeMultiplier;
+  BODIES.forEach(def=>{
+    const obj = objects[def.key];
+    if (!obj || !def.rotationHours) return;
+    obj.mesh.rotation.y += (simSecondsThisFrame/(def.rotationHours*3600))*Math.PI*2;
+  });
+
   posUpdateAccum += dt;
   if (posUpdateAccum > 0.15){ // recalcula ~6-7x/s, suficiente mesmo em velocidade alta
     posUpdateAccum = 0;
