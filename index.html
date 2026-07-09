@@ -146,7 +146,7 @@ const BODIES = [
   { key:'Uranus',  name:'Urano',    color:0x9fd4e0, radius:3.0, auRef:19.2, periodRef:'84 anos',    diamRef:'50.724 km', texture:TEX+'2k_uranus.jpg' },
   { key:'Neptune', name:'Netuno',   color:0x5c7cf0, radius:2.9, auRef:30.05,periodRef:'165 anos',   diamRef:'49.244 km', texture:TEX+'2k_neptune.jpg' },
 ];
-const MOON_VISUAL_RADIUS_UNITS = 4.6; // órbita da Lua é artisticamente ampliada (real seria invisível nessa escala)
+const MOON_VISUAL_RADIUS_UNITS = 9.5; // órbita da Lua é artisticamente ampliada (real seria invisível nessa escala)
 const MOON_TEXTURE = TEX+'2k_moon.jpg';
 const texLoader = new THREE.TextureLoader();
 
@@ -309,7 +309,7 @@ BODIES.forEach(def=>{
 });
 
 // Lua: pequena esfera filha visualmente orbitando a Terra
-const moonMesh = lowPolyMesh(0.7, 0xb9b9b9, 0, MOON_TEXTURE);
+const moonMesh = lowPolyMesh(0.55, 0xb9b9b9, 0, MOON_TEXTURE);
 solarGroup.add(moonMesh);
 const moonLabel = makeLabel('Lua');
 solarGroup.add(moonLabel);
@@ -439,9 +439,20 @@ const ZODIAC_CONSTELLATIONS = [
 // homenagem Star Trek — a estrela é catalogada de verdade, só o planeta é ficção), e um sistema
 // binário inteiramente fictício (Tatooine, homenagem Star Wars — sem posição real, marcado como tal).
 const FICTION_CONSTELLATIONS = [
-  { name:'40 Eridani', stars:[
+  { name:'40 Eridani', layer:'fiction', universe:'Star Trek', stars:[
     star('40Eri','40 Eridani A',0xffcf9e,'~5.100 K','Anã laranja (K0.5V) — real','≈16,3 anos-luz',9, 4.254, -7.653, {
       planets:[ { name:'Vulcan', color:0xb5462e, radius:2.1, orbitRadius:22, periodSec:16, fictional:true, universe:'Star Trek', texture:TEX+'2k_makemake_fictional.jpg' } ]
+    }),
+  ], lines:[] },
+  { name:'Alpha Centauri', layer:'fiction', universe:'Lost in Space', stars:[
+    star('AlphaCenA','Alpha Centauri A',0xfff0c8,'~5.790 K','Estrela real — destino colonial em Lost in Space','≈4,37 anos-luz',11, 14.660, -60.835, {
+      planets:[ { name:'Colônia Alpha', color:0x6f9bc8, radius:1.75, orbitRadius:24, periodSec:22, fictional:true, universe:'Lost in Space', texture:TEX+'2k_earth_daymap.jpg', feature:'resolute' } ]
+    }),
+    star('AlphaCenB','Alpha Centauri B',0xffd7a0,'~5.260 K','Estrela real companheira','≈4,37 anos-luz',9, 14.662, -60.840),
+  ], lines:[['AlphaCenA','AlphaCenB']] },
+  { name:'Abydos', layer:'fiction', universe:'Stargate', stars:[
+    star('AbydosStar','Abydos',0xffd18a,'~5.900 K','Sistema fictício — Stargate','desconhecida (ficção)',9, 5.900, -25.000, {
+      planets:[ { name:'Abydos', color:0xd5a867, radius:1.9, orbitRadius:24, periodSec:21, fictional:true, universe:'Stargate', texture:TEX+'2k_mars.jpg', feature:'pyramid' } ]
     }),
   ], lines:[] },
   { name:'Sistema Tatooine', layer:'fiction', universe:'Star Wars', stars:[
@@ -450,8 +461,7 @@ const FICTION_CONSTELLATIONS = [
     }),
     star('TatooineB','Tatoo II',0xffedc2,'~5.200 K','Anã amarela — posição fictícia (Star Wars)','desconhecida (ficção)',7, 9.508, -20.030),
   ], lines:[['TatooineA','TatooineB']] },
-];
-const ALL_CONSTELLATIONS = CONSTELLATIONS.concat(ZODIAC_CONSTELLATIONS).concat(FICTION_CONSTELLATIONS);
+];const ALL_CONSTELLATIONS = CONSTELLATIONS.concat(ZODIAC_CONSTELLATIONS).concat(FICTION_CONSTELLATIONS);
 
 // ---------- CAMADAS: real / zodíaco / teórico / ficção / fenômenos — cada categoria abre um painel
 // com um item por linha (cada constelação do zodíaco, cada universo de ficção, cada corpo teórico)
@@ -555,13 +565,19 @@ function fictionGroupFor(universe){
   return fictionUniverseGroups[universe];
 }
 const MOON_SHIPS = [
-  { name:'"Nave-E"', universe:'Star Trek', color:0xd8d8d8, accent:0xffcf70, size:1.6, orbitRadius:5, periodSec:14, tiltDeg:20,
+  { name:'"Nave-E"', universe:'Star Trek', color:0xd8d8d8, accent:0xffcf70, size:0.95, anchor:'Earth', orbitRadius:7, periodSec:14, tiltDeg:20,
     status:'Ficção (Star Trek) — homenagem própria, sem afiliação oficial com a franquia.' },
-  { name:'"Falcão"', universe:'Star Wars', color:0x9a9a8c, accent:0xff5533, size:1.4, orbitRadius:7, periodSec:9, tiltDeg:-35,
+  { name:'"Classe Delta"', universe:'Star Trek', color:0xc9d1d8, accent:0x7fbfff, size:0.78, anchor:'Mars', orbitRadius:6, periodSec:16, tiltDeg:-24,
+    status:'Ficção (Star Trek) — variação própria de nave exploratória, sem afiliação oficial com a franquia.' },
+  { name:'"Posto Profundo"', universe:'Star Trek', color:0xaeb8c2, accent:0xffcf70, size:0.72, anchor:'Jupiter', orbitRadius:13, periodSec:24, tiltDeg:34,
+    status:'Ficção (Star Trek) — pequena base avançada procedural, sem afiliação oficial com a franquia.' },
+  { name:'"Falcão"', universe:'Star Wars', color:0x9a9a8c, accent:0xff5533, size:0.82, anchor:'Moon', orbitRadius:12, periodSec:9, tiltDeg:-35,
     status:'Ficção (Star Wars) — homenagem própria, sem afiliação oficial com a franquia.' },
-  { name:'"Jupiter 2"', universe:'Lost in Space', color:0xc9d6de, accent:0x3fd6c8, size:1.5, orbitRadius:9, periodSec:18, tiltDeg:55,
+  { name:'"Jupiter 2"', universe:'Lost in Space', color:0xc9d6de, accent:0x3fd6c8, size:0.9, anchor:'Earth', orbitRadius:9.5, periodSec:18, tiltDeg:55,
     status:'Ficção (Lost in Space) — homenagem própria, sem afiliação oficial com a franquia.' },
-  { name:'Wayfarer-9', universe:'Original', color:0x8fd3ff, accent:0xffffff, size:1.2, orbitRadius:4, periodSec:11, tiltDeg:-10,
+  { name:'"Resolute"', universe:'Lost in Space', color:0xb8c8d4, accent:0x7fd8ff, size:0.82, anchor:'Saturn', orbitRadius:13, periodSec:26, tiltDeg:-18,
+    status:'Ficção (Lost in Space) — estação/nave-colônia procedural inspirada no conceito de transporte colonial.' },
+  { name:'Wayfarer-9', universe:'Original', color:0x8fd3ff, accent:0xffffff, size:0.75, anchor:'Moon', orbitRadius:7.5, periodSec:11, tiltDeg:-10,
     status:'Original do projeto — não pertence a nenhuma franquia.' },
 ];
 const moonShips = []; // apesar do nome, hoje orbita qualquer corpo — ver campo `anchor` de cada def (padrão 'Moon')
@@ -602,7 +618,7 @@ function buildFictionCraft(s){
   const accent = glowMat(s.accent,0.92);
 
   if (s.universe === 'Star Trek'){
-    addPart(group, new THREE.CylinderGeometry(R*0.72,R*0.82,R*0.16,48), hull, [0,0,0], [Math.PI/2,0,0], [1.25,1,1]);
+    addPart(group, new THREE.CylinderGeometry(R*0.72,R*0.82,R*0.16,48), hull, [0,0,0], [0,0,0], [1.25,1,1]);
     addPart(group, new THREE.SphereGeometry(R*0.28,32,16), hull, [0,R*0.04,0.08], [0,0,0], [1.45,0.22,0.85]);
     addPart(group, new THREE.CylinderGeometry(R*0.22,R*0.26,R*0.95,24), hull, [0,-R*0.06,-R*0.82], [Math.PI/2,0,0], [0.9,1,0.9]);
     addPart(group, new THREE.BoxGeometry(R*0.18,R*0.11,R*0.55), hull, [0,-R*0.02,-R*0.42]);
@@ -613,7 +629,7 @@ function buildFictionCraft(s){
     });
     addWindowRow(group, 7, R*0.12, R*0.78, R*0.95, s.accent);
   } else if (s.universe === 'Star Wars'){
-    addPart(group, new THREE.CylinderGeometry(R*0.95,R*1.0,R*0.18,48), hull, [0,0,0], [Math.PI/2,0,0], [1,1,0.8]);
+    addPart(group, new THREE.CylinderGeometry(R*0.95,R*1.0,R*0.18,48), hull, [0,0,0], [0,0,0], [1,1,0.8]);
     addPart(group, new THREE.CylinderGeometry(R*0.18,R*0.2,R*0.42,20), dark, [R*0.7,R*0.02,R*0.16], [0,0,Math.PI/2]);
     addPart(group, new THREE.SphereGeometry(R*0.2,20,12), hull, [R*1.02,R*0.02,R*0.16], [0,0,0], [1,0.72,0.72]);
     [-1,1].forEach(side=>{
@@ -624,7 +640,7 @@ function buildFictionCraft(s){
     addPart(group, new THREE.CircleGeometry(R*0.18,24), metalMat(0x59606a,0.5,0.5), [-R*0.42,R*0.38,-R*0.28], [-0.85,0.1,0], [1,1,1]);
     addWindowRow(group, 5, R*0.14, R*0.52, R*0.7, s.accent);
   } else if (s.universe === 'Lost in Space'){
-    addPart(group, new THREE.CylinderGeometry(R*0.9,R*0.98,R*0.2,56), hull, [0,0,0], [Math.PI/2,0,0]);
+    addPart(group, new THREE.CylinderGeometry(R*0.9,R*0.98,R*0.2,56), hull, [0,0,0]);
     addPart(group, new THREE.SphereGeometry(R*0.68,36,16), hull, [0,R*0.12,0], [0,0,0], [1,0.28,1]);
     addPart(group, new THREE.SphereGeometry(R*0.42,32,12), new THREE.MeshStandardMaterial({ color:0x9fc8d8, roughness:0.18, metalness:0.2, transparent:true, opacity:0.55 }), [0,R*0.28,0], [0,0,0], [1,0.36,1]);
     addPart(group, new THREE.TorusGeometry(R*0.74,R*0.035,10,48), dark, [0,-R*0.05,0], [Math.PI/2,0,0]);
@@ -683,7 +699,7 @@ MOON_SHIPS.forEach(s=>{
 // "Cidade Flutuante" (homenagem Star Wars, tipo Cidade das Nuvens) — disco + haste, flutuando
 // perto de Saturno (gigante gasoso combina com a estética de cidade suspensa na atmosfera).
 (function cloudCityHomage(){
-  const R = 1.8;
+  const R = 1.15;
   const def = { name:'"Cidade Flutuante"', universe:'Star Wars', size:R, anchor:'Saturn', orbitRadius:17, periodSec:30, tiltDeg:-12,
     status:'Ficção (Star Wars) — homenagem própria a uma cidade suspensa numa atmosfera de gigante gasoso, geometria 100% procedural, sem afiliação com a franquia.' };
   const group = new THREE.Group();
@@ -710,7 +726,7 @@ MOON_SHIPS.forEach(s=>{
 // prato do superlaser), sem textura nenhuma licenciada. Reaproveita o mesmo loop de animação
 // das naves (mesmo formato { group, label, def }), só que orbitando mais largo e mais devagar.
 (function deathStarHomage(){
-  const R = 2.4;
+  const R = 1.35;
   const def = { name:'"Estação-D"', universe:'Star Wars', size:R, orbitRadius:13, periodSec:26, tiltDeg:8,
     status:'Ficção (Star Wars) — homenagem própria, geometria 100% procedural (sem textura oficial), sem afiliação com a franquia.' };
   const group = new THREE.Group();
@@ -754,10 +770,10 @@ function buildAlienVessel(def){
   const light = glowMat(def.accent,0.82);
 
   if (def.form === 'mothership'){
-    addPart(group, new THREE.CylinderGeometry(R*1.45,R*1.9,R*0.26,72), hull, [0,0,0], [Math.PI/2,0,0]);
+    addPart(group, new THREE.CylinderGeometry(R*1.45,R*1.9,R*0.26,72), hull, [0,0,0]);
     addPart(group, new THREE.SphereGeometry(R*0.82,48,18), hull, [0,R*0.1,0], [0,0,0], [1,0.22,1]);
     addPart(group, new THREE.TorusGeometry(R*1.18,R*0.06,10,72), dark, [0,R*0.02,0], [Math.PI/2,0,0]);
-    addPart(group, new THREE.CylinderGeometry(R*0.28,R*0.42,R*0.18,32), light, [0,-R*0.18,0], [Math.PI/2,0,0]);
+    addPart(group, new THREE.CylinderGeometry(R*0.28,R*0.42,R*0.18,32), light, [0,-R*0.18,0]);
     for (let i=0;i<18;i++){
       const a = i*Math.PI*2/18;
       const ring = R*(0.82 + rand()*0.72);
@@ -792,15 +808,15 @@ function buildAlienVessel(def){
 }
 (function originalAlienFleet(){
   const defs = [
-    { name:'Nave Colmeia', form:'mothership', universe:'Original', color:0x6d7782, accent:0x8dfff4, size:1.85, anchor:'Earth', orbitRadius:10, periodSec:24, tiltDeg:28, seed:1201,
+    { name:'Nave Colmeia', form:'mothership', universe:'Original', color:0x6d7782, accent:0x8dfff4, size:0.9, anchor:'Moon', orbitRadius:15, periodSec:24, tiltDeg:28, seed:1201,
       status:'Original do projeto — megaestrutura alienígena em disco, inspirada em ficção de invasão sem copiar nenhum design oficial.' },
-    { name:'Disco Atmosférico', form:'mothership', universe:'Original', color:0x565f68, accent:0xfff0a0, size:1.25, anchor:'Mars', orbitRadius:6, periodSec:17, tiltDeg:-18, seed:4312,
+    { name:'Disco Atmosférico', form:'mothership', universe:'Original', color:0x565f68, accent:0xfff0a0, size:0.72, anchor:'Mars', orbitRadius:7, periodSec:17, tiltDeg:-18, seed:4312,
       status:'Original do projeto — nave discoidal pesada para entrada atmosférica e observação orbital.' },
-    { name:'Crescente Negro', form:'crescent', universe:'Original', color:0x4d5b69, accent:0xb08dff, size:1.45, anchor:'Moon', orbitRadius:11, periodSec:21, tiltDeg:42, seed:8821,
+    { name:'Crescente Negro', form:'crescent', universe:'Original', color:0x4d5b69, accent:0xb08dff, size:0.82, anchor:'Moon', orbitRadius:11, periodSec:21, tiltDeg:42, seed:8821,
       status:'Original do projeto — cruzador em arco com núcleo luminoso e pontas assimétricas.' },
-    { name:'Lâmina Abissal', form:'blade', universe:'Original', color:0x7a8490, accent:0x6aff9e, size:1.25, anchor:'Moon', orbitRadius:8.5, periodSec:13, tiltDeg:-46, seed:991,
+    { name:'Lâmina Abissal', form:'blade', universe:'Original', color:0x7a8490, accent:0x6aff9e, size:0.72, anchor:'Moon', orbitRadius:8.5, periodSec:13, tiltDeg:-46, seed:991,
       status:'Original do projeto — interceptador angular, sem referência direta a nave licenciada.' },
-    { name:'Sonda Tridente', form:'trident', universe:'Original', color:0x91a6b8, accent:0xff7fd6, size:1.05, anchor:'Jupiter', orbitRadius:10, periodSec:16, tiltDeg:12, seed:7717,
+    { name:'Sonda Tridente', form:'trident', universe:'Original', color:0x91a6b8, accent:0xff7fd6, size:0.65, anchor:'Jupiter', orbitRadius:10, periodSec:16, tiltDeg:12, seed:7717,
       status:'Original do projeto — sonda de três antenas para fenômenos de alta energia.' },
   ];
   defs.forEach(def=>{
@@ -832,6 +848,25 @@ const phenomenaMeshes = [{ mesh:phenomenaMarkerMesh, label:phenomenaMarkerLabel,
   status:'Fenômeno — camada de relatos não verificados (avistamentos, "luzes entrando e saindo de crateras" etc.), cruzando com incidentes militares publicamente documentados (ex.: encontros da Marinha dos EUA como o caso Nimitz/2004). Não é confirmação de nada, é só um marcador de "aqui existem relatos".'
 } }];
 
+const phenomenaFleetShips = [];
+(function buildPhenomenaFleet(){
+  const defs = [
+    { name:'Eco-1', form:'blade', color:0x6f8ea0, accent:0x82fff0, size:0.42, seed:210 },
+    { name:'Eco-2', form:'trident', color:0x8798a8, accent:0xfff2a0, size:0.36, seed:211 },
+    { name:'Eco-3', form:'crescent', color:0x5f6b78, accent:0xb08dff, size:0.4, seed:212 },
+    { name:'Eco-4', form:'blade', color:0x71808a, accent:0x8dfff4, size:0.32, seed:213 },
+    { name:'Eco-5', form:'trident', color:0x8ca4b5, accent:0xff7fd6, size:0.34, seed:214 },
+  ];
+  defs.forEach((def,i)=>{
+    const shipDef = { ...def, universe:'phenomena' };
+    const group = buildAlienVessel(shipDef);
+    group.scale.setScalar(0.85);
+    phenomenaGroup.add(group);
+    const info = { name:def.name, status:'Fenômeno — nave/sinal não identificado em formação atrás da Lua.' };
+    phenomenaFleetShips.push({ group, def:info, phase:i*1.37, spread:i-2 });
+    phenomenaMeshes.push({ mesh:group, def:info });
+  });
+})();
 function showBodyInfo(def){
   infoNameEl.textContent = def.name;
   infoDistEl.textContent = def.status || '';
@@ -895,7 +930,7 @@ document.querySelectorAll('.speedBtn').forEach(btn=>{
 const LAYER_ITEMS = {
   zodiac: ZODIAC_CONSTELLATIONS.map(c=>c.name),
   theoretical: THEORETICAL_BODIES.map(b=>b.name),
-  fiction: ['Star Trek','Star Wars','Lost in Space','Original'],
+  fiction: ['Star Trek','Star Wars','Lost in Space','Stargate','Original'],
   phenomena: [PHENOMENA_NAME],
 };
 const layerPanelEl = document.getElementById('layerPanel');
@@ -1043,6 +1078,26 @@ const HOME_MARKER = { key:'Sol', name:'Sol', color:0xfff2cc, isHome:true, pos:[0
 let starSkyMeshes = [];
 let starPlanets = []; // { mesh, orbitRadius, periodSec } — animados no loop enquanto dentro de uma estrela
 
+function addFictionPlanetFeatures(pMesh, p){
+  if (!p.feature) return;
+  const r = p.radius;
+  if (p.feature === 'pyramid'){
+    const base = addPart(pMesh, new THREE.CylinderGeometry(r*0.34,r*0.42,r*0.035,4), metalMat(0xc99b5a,0.72,0.12), [0,r*1.015,0], [0,Math.PI/4,0]);
+    const pyramid = addPart(pMesh, new THREE.ConeGeometry(r*0.34,r*0.42,4), metalMat(0xe0b36d,0.68,0.08), [0,r*1.23,0], [0,Math.PI/4,0]);
+    addPart(pMesh, new THREE.SphereGeometry(r*0.045,10,8), glowMat(0x7fd8ff,0.85), [0,r*1.47,0]);
+    [base,pyramid].forEach(m=>m.lookAt(new THREE.Vector3(0,r*3,0)));
+  }
+  if (p.feature === 'resolute'){
+    const station = new THREE.Group();
+    station.position.set(r*1.65, r*0.25, 0);
+    station.rotation.z = 0.35;
+    addPart(station, new THREE.TorusGeometry(r*0.34,r*0.025,8,42), metalMat(0xb9c6d0,0.38,0.68), [0,0,0], [Math.PI/2,0,0]);
+    addPart(station, new THREE.CylinderGeometry(r*0.045,r*0.045,r*0.72,12), metalMat(0xdfe7ed,0.34,0.72), [0,0,0], [0,0,Math.PI/2]);
+    addPart(station, new THREE.BoxGeometry(r*0.5,r*0.035,r*0.16), metalMat(0x10263f,0.25,0.2), [0,r*0.2,0]);
+    addPart(station, new THREE.SphereGeometry(r*0.05,10,8), glowMat(0x3fd6c8,0.9), [r*0.42,0,0]);
+    pMesh.add(station);
+  }
+}
 function enterStarSystem(def){
   while (starSystemGroup.children.length) starSystemGroup.remove(starSystemGroup.children[0]);
   starPlanets = [];
@@ -1058,6 +1113,7 @@ function enterStarSystem(def){
   (def.planets || []).forEach(p=>{
     if (p.fictional && !isItemVisible('fiction', p.universe)) return; // respeita o toggle do universo mesmo dentro da estrela
     const pMesh = lowPolyMesh(p.radius, p.color, 0, p.texture);
+    addFictionPlanetFeatures(pMesh, p);
     starSystemGroup.add(pMesh);
     starSystemGroup.add(orbitLine(p.orbitRadius));
     const pLabel = makeLabel(p.name);
@@ -1325,14 +1381,23 @@ function animate(){
     sh.group.rotation.y = -angle; // label é filho do group, no eixo Y — não se move com essa rotação
   });
 
-  // marcador de fenômeno (camada fenômenos) — acompanha a Lua de perto
+  // marcador e frota de fenômenos — acompanham a Lua, mas ficam mais afastados no fundo
   if (phenomenaMeshes[0]){
     const pm = phenomenaMeshes[0];
-    pm.mesh.position.set(moonMesh.position.x+3, moonMesh.position.y+2, moonMesh.position.z-3);
+    pm.mesh.position.set(moonMesh.position.x+3.4, moonMesh.position.y+2.2, moonMesh.position.z-5.8);
     pm.mesh.rotation.z += dt*0.2;
     pm.label.position.set(pm.mesh.position.x, pm.mesh.position.y+1.5, pm.mesh.position.z);
   }
-
+  phenomenaFleetShips.forEach((ship,i)=>{
+    const drift = Math.sin(starSystemElapsed*0.9 + ship.phase)*0.35;
+    ship.group.position.set(
+      moonMesh.position.x - 5.8 + ship.spread*1.15,
+      moonMesh.position.y + 1.1 + drift + (i%2)*0.55,
+      moonMesh.position.z - 8.5 - Math.abs(ship.spread)*0.7
+    );
+    ship.group.rotation.y = starSystemElapsed*0.35 + ship.phase;
+    ship.group.rotation.z = 0.18*Math.sin(starSystemElapsed + ship.phase);
+  });
   if (flying && flyTarget){
     flyProgress = Math.min(1, flyProgress + dt*0.7);
     const ease = flyProgress*flyProgress*(3-2*flyProgress);
