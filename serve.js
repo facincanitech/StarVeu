@@ -13,11 +13,11 @@ const MIME = {
 
 http.createServer((req, res) => {
   let filePath = path.join(ROOT, decodeURIComponent(req.url.split('?')[0]));
-  if (req.url === '/') filePath = path.join(ROOT, 'starveu.html');
+  if (req.url === '/') filePath = path.join(ROOT, 'index.html');
   fs.readFile(filePath, (err, data) => {
     if (err) { res.writeHead(404); res.end('not found'); return; }
     const ext = path.extname(filePath).toLowerCase();
     res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
     res.end(data);
   });
-}).listen(PORT, () => console.log(`servindo em http://localhost:${PORT}/starveu.html`));
+}).listen(PORT, () => console.log(`servindo em http://localhost:${PORT}/`));
