@@ -26,11 +26,26 @@
   }
   .speedBtn.active{background:#2a4a70;color:#fff;border-color:#7fbfff;}
   #layerRow{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap;}
-  .layerBtn{
+  .layerCatBtn{
     font-family:monospace;font-size:10px;background:#1a1420;color:#c9b8d9;
     border:1px solid #3a2c48;border-radius:4px;padding:4px 7px;cursor:pointer;
   }
-  .layerBtn.active{background:#4a2a70;color:#fff;border-color:#c07fff;}
+  .layerCatBtn.open{background:#4a2a70;color:#fff;border-color:#c07fff;}
+  #layerPanel{
+    display:none;margin-top:6px;background:rgba(10,8,16,0.85);border:1px solid rgba(192,127,255,0.28);
+    border-radius:8px;padding:8px 10px;max-height:200px;overflow-y:auto;min-width:170px;
+  }
+  #layerPanel.open{display:block;}
+  #layerPanel .panelHead{
+    display:flex;justify-content:space-between;align-items:center;gap:8px;
+    margin-bottom:6px;font-size:10px;color:#c9b8d9;text-transform:uppercase;letter-spacing:0.5px;
+  }
+  #layerPanel .panelQuick{
+    font-size:9px;color:#9fc4e8;cursor:pointer;background:none;border:none;
+    font-family:monospace;padding:0;text-decoration:underline;
+  }
+  #layerPanel label{display:flex;align-items:center;gap:6px;font-size:11px;padding:2px 0;cursor:pointer;color:#dfe8f5;}
+  #layerPanel input{accent-color:#c07fff;cursor:pointer;}
   #bodyList{
     position:fixed;top:12px;right:12px;color:#cfe8ff;font-size:11px;
     background:rgba(6,10,18,0.55);padding:10px 12px;border-radius:8px;
@@ -83,11 +98,13 @@
     <button class="speedBtn" data-mult="31536000">1 ano/s</button>
   </div>
   <div id="layerRow">
-    <button class="layerBtn active" data-layer="zodiac">♈ Zodíaco</button>
-    <button class="layerBtn active" data-layer="theoretical">🧪 Teórico</button>
-    <button class="layerBtn active" data-layer="fiction">🖖 Ficção</button>
-    <button class="layerBtn active" data-layer="phenomena">👁 Fenômenos</button>
+    <button class="layerCatBtn" data-layer="zodiac">♈ Zodíaco</button>
+    <button class="layerCatBtn" data-layer="theoretical">🧪 Teórico</button>
+    <button class="layerCatBtn" data-layer="fiction">🖖 Ficção</button>
+    <button class="layerCatBtn" data-layer="phenomena">👁 Fenômenos</button>
+    <button id="labelsToggle" class="layerCatBtn open">🏷 Nomes</button>
   </div>
+  <div id="layerPanel"></div>
   <div class="hint">
     Desktop: clique+arraste = olhar · WASD = mover · scroll = avançar/recuar<br>
     Mobile: arraste = olhar · pinça = avançar/recuar<br>
@@ -225,6 +242,8 @@ function orbitLine(radiusUnits){
   return new THREE.LineLoop(geo, new THREE.LineBasicMaterial({ color:0x3a5570, transparent:true, opacity:0.35 }));
 }
 
+const allLabels = []; // toda label criada entra aqui — permite ligar/desligar todos os nomes de uma vez
+let labelsVisible = true;
 function makeLabel(text){
   const c = document.createElement('canvas');
   const ctx = c.getContext('2d');
@@ -238,6 +257,8 @@ function makeLabel(text){
   const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map:tex, depthTest:false, transparent:true }));
   const aspect = w/h;
   sprite.scale.set(aspect*7, 7, 1);
+  sprite.visible = labelsVisible;
+  allLabels.push(sprite);
   return sprite;
 }
 
@@ -432,20 +453,25 @@ const FICTION_CONSTELLATIONS = [
 ];
 const ALL_CONSTELLATIONS = CONSTELLATIONS.concat(ZODIAC_CONSTELLATIONS).concat(FICTION_CONSTELLATIONS);
 
-// ---------- CAMADAS: real / zodíaco / teórico / ficção / fenômenos — cada uma liga/desliga sozinha ----------
-// qualquer grupo three.js registrado aqui (de qualquer parte da cena: céu profundo, sistema
-// solar, dentro de uma estrela visitada) responde ao mesmo botão. real fica sempre visível
-// (é a base do app); as outras 4 têm toggle.
-const layerVisible = { zodiac:true, theoretical:true, fiction:true, phenomena:true };
-const layerGroupList = []; // { layer, group }
-function registerLayerGroup(layer, group){
-  group.visible = layerVisible[layer] !== false;
-  layerGroupList.push({ layer, group });
+// ---------- CAMADAS: real / zodíaco / teórico / ficção / fenômenos — cada categoria abre um painel
+// com um item por linha (cada constelação do zodíaco, cada universo de ficção, cada corpo teórico)
+// e cada item liga/desliga sozinho. real fica sempre visível (é a base do app); os outros 4
+// grupos guardam um THREE.Group por item, e o estado persiste em localStorage.
+const ITEM_VISIBLE_STORAGE_KEY = 'starveu.itemVisible.v1';
+let itemVisible = {};
+try { itemVisible = JSON.parse(localStorage.getItem(ITEM_VISIBLE_STORAGE_KEY)) || {}; } catch(e){ itemVisible = {}; }
+const itemGroupList = []; // { layer, item, group }
+function itemKey(layer, item){ return layer + '|' + item; }
+function isItemVisible(layer, item){ return itemVisible[itemKey(layer,item)] !== false; }
+function registerItemGroup(layer, item, group){
+  group.visible = isItemVisible(layer, item);
+  itemGroupList.push({ layer, item, group });
   return group;
 }
-function setLayerVisible(layer, visible){
-  layerVisible[layer] = visible;
-  layerGroupList.forEach(entry => { if (entry.layer === layer) entry.group.visible = visible; });
+function setItemVisible(layer, item, visible){
+  itemVisible[itemKey(layer,item)] = visible;
+  itemGroupList.forEach(entry => { if (entry.layer === layer && entry.item === item) entry.group.visible = visible; });
+  try { localStorage.setItem(ITEM_VISIBLE_STORAGE_KEY, JSON.stringify(itemVisible)); } catch(e){}
 }
 
 // constrói as estrelas/linhas de um catálogo de constelações dentro de um grupo; devolve
@@ -473,20 +499,22 @@ function buildSky(group, constellations){
   return meshes;
 }
 
-// separa cada constelação num subgrupo por camada (real fica direto no parentGroup, sem toggle;
-// zodíaco/teórico/ficção/fenômenos cada um no seu subgrupo registrado) — devolve a lista completa
-// de meshes clicáveis, do mesmo jeito que buildSky.
+// separa cada constelação num subgrupo por ITEM dentro da camada (real fica direto no
+// parentGroup, sem toggle; zodíaco = 1 subgrupo por constelação, ficção = 1 subgrupo por
+// universo) — devolve a lista completa de meshes clicáveis, do mesmo jeito que buildSky.
 function populateSky(parentGroup, constellations){
-  const byLayer = {};
+  const byKey = {};
   const real = [];
   constellations.forEach(c=>{
     const layer = c.zodiac ? 'zodiac' : c.layer;
     if (!layer) { real.push(c); return; }
-    (byLayer[layer] = byLayer[layer] || []).push(c);
+    const item = layer === 'zodiac' ? c.name : (c.universe || c.name);
+    const k = itemKey(layer, item);
+    (byKey[k] = byKey[k] || { layer, item, list:[] }).list.push(c);
   });
   let meshes = buildSky(parentGroup, real);
-  Object.entries(byLayer).forEach(([layer, list])=>{
-    const g = registerLayerGroup(layer, new THREE.Group());
+  Object.values(byKey).forEach(({layer, item, list})=>{
+    const g = registerItemGroup(layer, item, new THREE.Group());
     parentGroup.add(g);
     meshes = meshes.concat(buildSky(g, list));
   });
@@ -496,8 +524,6 @@ function populateSky(parentGroup, constellations){
 const skyMeshes = populateSky(skyGroup, ALL_CONSTELLATIONS);
 
 // ---------- CAMADA TEÓRICA (escala do sistema solar): hipóteses científicas não confirmadas/descartadas ----------
-const theoreticalGroup = registerLayerGroup('theoretical', new THREE.Group());
-solarGroup.add(theoreticalGroup);
 const THEORETICAL_BODIES = [
   { name:'Vulcano', color:0x8899aa, radius:0.6, orbitRadius:AU_TO_UNITS*0.28, periodSec:6, texture:TEX+'2k_haumea_fictional.jpg',
     status:'Teórico — hipótese do século XIX (Le Verrier) pra explicar a órbita de Mercúrio; descartada depois que a Relatividade Geral (1915) explicou a anomalia sem precisar de um planeta extra. Não confundir com o "Vulcan" de ficção.' },
@@ -506,17 +532,28 @@ const THEORETICAL_BODIES = [
 ];
 const theoreticalMeshes = [];
 THEORETICAL_BODIES.forEach(b=>{
+  const group = registerItemGroup('theoretical', b.name, new THREE.Group());
+  solarGroup.add(group);
   const mesh = lowPolyMesh(b.radius, b.color, 0, b.texture);
-  theoreticalGroup.add(mesh);
-  theoreticalGroup.add(orbitLine(b.orbitRadius));
+  group.add(mesh);
+  group.add(orbitLine(b.orbitRadius));
   const label = makeLabel(b.name);
-  theoreticalGroup.add(label);
+  group.add(label);
   theoreticalMeshes.push({ mesh, label, def:b });
 });
 
 // ---------- CAMADA FICÇÃO (escala do sistema solar): naves homenageando franquias + 1 original ----------
-const fictionSolarGroup = registerLayerGroup('fiction', new THREE.Group());
-solarGroup.add(fictionSolarGroup);
+// 1 subgrupo por universo (registrado via registerItemGroup), não 1 só pra ficção inteira —
+// assim dá pra ligar só "Star Trek" e desligar o resto, por exemplo.
+const fictionUniverseGroups = {};
+function fictionGroupFor(universe){
+  if (!fictionUniverseGroups[universe]){
+    const g = registerItemGroup('fiction', universe, new THREE.Group());
+    solarGroup.add(g);
+    fictionUniverseGroups[universe] = g;
+  }
+  return fictionUniverseGroups[universe];
+}
 const MOON_SHIPS = [
   { name:'"Nave-E"', universe:'Star Trek', color:0xd8d8d8, accent:0xffcf70, size:1.6, orbitRadius:5, periodSec:14, tiltDeg:20,
     status:'Ficção (Star Trek) — homenagem própria, sem afiliação oficial com a franquia.' },
@@ -541,9 +578,10 @@ MOON_SHIPS.forEach(s=>{
   const accent = new THREE.Mesh(new THREE.SphereGeometry(s.size*0.16, 8, 8), new THREE.MeshBasicMaterial({ color:s.accent }));
   accent.position.set(0, 0, s.size*0.55);
   group.add(accent);
-  fictionSolarGroup.add(group);
+  fictionGroupFor(s.universe).add(group);
   const label = makeLabel(s.name);
-  fictionSolarGroup.add(label);
+  label.position.set(0, s.size + 1.2, 0); // filho do group: offset local, sobrevive à rotação (fica no eixo Y)
+  group.add(label);
   moonShips.push({ group, label, def:s });
 });
 
@@ -562,9 +600,10 @@ MOON_SHIPS.forEach(s=>{
   const beacon = new THREE.Mesh(new THREE.SphereGeometry(R*0.14, 10, 10), new THREE.MeshBasicMaterial({ color:0xffcf70 }));
   beacon.position.set(0, R*0.7, 0);
   group.add(beacon);
-  fictionSolarGroup.add(group);
+  fictionGroupFor(def.universe).add(group);
   const label = makeLabel(def.name);
-  fictionSolarGroup.add(label);
+  label.position.set(0, R + 1.2, 0);
+  group.add(label);
   moonShips.push({ group, label, def });
 })();
 
@@ -584,9 +623,10 @@ MOON_SHIPS.forEach(s=>{
   glow.rotation.x = Math.PI/2;
   glow.position.y = R*0.1;
   group.add(glow);
-  fictionSolarGroup.add(group);
+  fictionGroupFor(def.universe).add(group);
   const label = makeLabel(def.name);
-  fictionSolarGroup.add(label);
+  label.position.set(0, R + 1.2, 0);
+  group.add(label);
   moonShips.push({ group, label, def });
 })();
 
@@ -611,24 +651,26 @@ MOON_SHIPS.forEach(s=>{
   const emitter = new THREE.Mesh(new THREE.SphereGeometry(R*0.05, 10, 10), new THREE.MeshBasicMaterial({ color:0x202225 }));
   emitter.position.copy(dishDir).multiplyScalar(R*1.01);
   group.add(emitter);
-  fictionSolarGroup.add(group);
+  fictionGroupFor(def.universe).add(group);
   const label = makeLabel(def.name);
-  fictionSolarGroup.add(label);
+  label.position.set(0, R + 1.2, 0);
+  group.add(label);
   moonShips.push({ group, label, def });
 })();
 
 // ---------- CAMADA FENÔMENOS: marcador de relatos não confirmados perto da Lua ----------
-const phenomenaGroup = registerLayerGroup('phenomena', new THREE.Group());
+const PHENOMENA_NAME = 'Zona de relatos não confirmados';
+const phenomenaGroup = registerItemGroup('phenomena', PHENOMENA_NAME, new THREE.Group());
 solarGroup.add(phenomenaGroup);
 const phenomenaMarkerMesh = new THREE.Mesh(
   new THREE.RingGeometry(1.6, 2.0, 24),
   new THREE.MeshBasicMaterial({ color:0xffe27a, side:THREE.DoubleSide, transparent:true, opacity:0.6 })
 );
 phenomenaGroup.add(phenomenaMarkerMesh);
-const phenomenaMarkerLabel = makeLabel('Zona de relatos não confirmados');
+const phenomenaMarkerLabel = makeLabel(PHENOMENA_NAME);
 phenomenaGroup.add(phenomenaMarkerLabel);
 const phenomenaMeshes = [{ mesh:phenomenaMarkerMesh, label:phenomenaMarkerLabel, def:{
-  name:'Zona de relatos não confirmados (Lua)',
+  name:PHENOMENA_NAME,
   status:'Fenômeno — camada de relatos não verificados (avistamentos, "luzes entrando e saindo de crateras" etc.), cruzando com incidentes militares publicamente documentados (ex.: encontros da Marinha dos EUA como o caso Nimitz/2004). Não é confirmação de nada, é só um marcador de "aqui existem relatos".'
 } }];
 
@@ -691,12 +733,59 @@ document.querySelectorAll('.speedBtn').forEach(btn=>{
   });
 });
 
-document.querySelectorAll('.layerBtn').forEach(btn=>{
+// cada botão de categoria abre um painel com um checkbox por item daquela camada
+const LAYER_ITEMS = {
+  zodiac: ZODIAC_CONSTELLATIONS.map(c=>c.name),
+  theoretical: THEORETICAL_BODIES.map(b=>b.name),
+  fiction: ['Star Trek','Star Wars','Lost in Space','Original'],
+  phenomena: [PHENOMENA_NAME],
+};
+const layerPanelEl = document.getElementById('layerPanel');
+let openLayer = null;
+
+function renderLayerPanel(layer){
+  const items = LAYER_ITEMS[layer] || [];
+  const rows = items.map(item=>{
+    const checked = isItemVisible(layer, item) ? 'checked' : '';
+    return `<label><input type="checkbox" data-item="${item}" ${checked}> ${item}</label>`;
+  }).join('');
+  layerPanelEl.innerHTML = `
+    <div class="panelHead">
+      <span>${layer}</span>
+      <span><button class="panelQuick" data-act="all">todos</button> · <button class="panelQuick" data-act="none">nenhum</button></span>
+    </div>
+    ${rows}`;
+  layerPanelEl.querySelectorAll('input[type=checkbox]').forEach(cb=>{
+    cb.addEventListener('change', ()=> setItemVisible(layer, cb.dataset.item, cb.checked));
+  });
+  layerPanelEl.querySelectorAll('.panelQuick').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const on = btn.dataset.act === 'all';
+      items.forEach(item=> setItemVisible(layer, item, on));
+      renderLayerPanel(layer);
+    });
+  });
+}
+
+document.getElementById('labelsToggle').addEventListener('click', function(){
+  labelsVisible = !labelsVisible;
+  allLabels.forEach(l => l.visible = labelsVisible);
+  this.classList.toggle('open', labelsVisible);
+});
+
+document.querySelectorAll('.layerCatBtn[data-layer]').forEach(btn=>{
   btn.addEventListener('click', ()=>{
     const layer = btn.dataset.layer;
-    const next = !layerVisible[layer];
-    setLayerVisible(layer, next);
-    btn.classList.toggle('active', next);
+    if (openLayer === layer){
+      openLayer = null;
+      layerPanelEl.classList.remove('open');
+      document.querySelectorAll('.layerCatBtn[data-layer]').forEach(b=>b.classList.remove('open'));
+      return;
+    }
+    openLayer = layer;
+    document.querySelectorAll('.layerCatBtn[data-layer]').forEach(b=>b.classList.toggle('open', b===btn));
+    renderLayerPanel(layer);
+    layerPanelEl.classList.add('open');
   });
 });
 
@@ -809,7 +898,7 @@ function enterStarSystem(def){
   starSystemGroup.add(label);
 
   (def.planets || []).forEach(p=>{
-    if (p.fictional && layerVisible.fiction === false) return; // respeita o toggle de ficção mesmo dentro da estrela
+    if (p.fictional && !isItemVisible('fiction', p.universe)) return; // respeita o toggle do universo mesmo dentro da estrela
     const pMesh = lowPolyMesh(p.radius, p.color, 0, p.texture);
     starSystemGroup.add(pMesh);
     starSystemGroup.add(orbitLine(p.orbitRadius));
@@ -1075,8 +1164,7 @@ function animate(){
     const lx = Math.cos(angle)*r, lzFlat = Math.sin(angle)*r;
     const ly = lzFlat*Math.sin(tilt), lz = lzFlat*Math.cos(tilt);
     sh.group.position.set(anchor.x+lx, anchor.y+ly, anchor.z+lz);
-    sh.group.rotation.y = -angle;
-    sh.label.position.set(sh.group.position.x, sh.group.position.y + sh.def.size + 1.2, sh.group.position.z);
+    sh.group.rotation.y = -angle; // label é filho do group, no eixo Y — não se move com essa rotação
   });
 
   // marcador de fenômeno (camada fenômenos) — acompanha a Lua de perto
