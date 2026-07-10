@@ -148,7 +148,7 @@
 <body>
 
 <div id="loading">calculando posições reais...</div>
-<div id="versionBadge">StarVeu — build 2026-07-10e</div>
+<div id="versionBadge">StarVeu — build 2026-07-10f</div>
 
 <div id="hud">
   <div class="clock" id="clockText">—</div>
@@ -1755,17 +1755,36 @@ let groundMode = false;
 const groundGroup = new THREE.Group();
 groundGroup.visible = false;
 scene.add(groundGroup);
-// foto panorâmica 360° real (equiretangular 2:1) — André forneceu `texturas/landscape4k.png`
-// (versão upscalada 4K de `terrainterno.png`, 3548x1774, ~9MB),
-// mapeada por dentro de uma esfera grande com a câmera no centro. Arrastar já funciona de graça:
-// é o mesmo yaw/pitch do fly-cam normal, só que sem "pra onde ir", só "pra onde olhar".
+// chão/céu procedural (placeholder) — a panorâmica 360 real (terrainterno.png/landscape4k.png)
+// ficou pixelada/distorcida de perto, André vai atrás de uma imagem flat em vez de 360. Volta
+// pro visual simples (plano + céu com gradiente) até decidir o que usar no lugar.
 (function buildGroundScene(){
-  const panoTex = texLoader.load(TEX+'landscape4k.png');
-  const panoSphere = new THREE.Mesh(
-    new THREE.SphereGeometry(400, 60, 40),
-    new THREE.MeshBasicMaterial({ map: panoTex, side: THREE.BackSide })
+  const ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(500,500,1,1),
+    new THREE.MeshStandardMaterial({ color:0x3f5a34, roughness:1, metalness:0 })
   );
-  groundGroup.add(panoSphere);
+  ground.rotation.x = -Math.PI/2;
+  groundGroup.add(ground);
+
+  const skyGeo = new THREE.SphereGeometry(400, 32, 24);
+  const posAttr = skyGeo.attributes.position;
+  const colors = new Float32Array(posAttr.count*3);
+  const top = new THREE.Color(0x2f5fa8), horizon = new THREE.Color(0xcfe0e8);
+  for (let i=0;i<posAttr.count;i++){
+    const y = posAttr.getY(i)/400;
+    const t = Math.max(0, y);
+    const c = horizon.clone().lerp(top, t);
+    colors[i*3]=c.r; colors[i*3+1]=c.g; colors[i*3+2]=c.b;
+  }
+  skyGeo.setAttribute('color', new THREE.BufferAttribute(colors,3));
+  const sky = new THREE.Mesh(skyGeo, new THREE.MeshBasicMaterial({ vertexColors:true, side:THREE.BackSide, fog:false }));
+  groundGroup.add(sky);
+
+  const groundLight = new THREE.HemisphereLight(0xffffff, 0x3f5a34, 1.1);
+  groundGroup.add(groundLight);
+  const sunish = new THREE.DirectionalLight(0xfff2d8, 0.9);
+  sunish.position.set(80,120,60);
+  groundGroup.add(sunish);
 })();
 
 const enterPlanetBtnEl = document.getElementById('enterPlanetBtn');
