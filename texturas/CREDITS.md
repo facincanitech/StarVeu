@@ -35,6 +35,12 @@ https://commons.wikimedia.org/wiki/Category:Solar_System_Scope (mesma licença C
 | `2k_stars.jpg` | — | **não usado** — mantido caso troque o céu por uma esfera separada de estrelas |
 | `2k_stars_milky_way.jpg` | — | glow difuso e escurecido de fundo (não é mais nítido — ver observações) |
 | `2k_bennu_asteroid_nasa.jpg` | Asteroide Bennu (real, fotografado) | Objetos interestelares (1I/2I/3I) + maiores asteroides do cinturão (Ceres/Vesta/Palas) na camada "Corpos menores" |
+| `terrainterno.png` | Panorâmica 360° (paisagem genérica, não é um local real de nenhum caso) | Cena de fundo do "modo chão" (a planície ao entrar na Terra) |
+
+`terrainterno.png` foi fornecida diretamente pelo André (não faz parte do pacote da Solar System
+Scope, nem é foto da NASA) — origem/licença não verificada por mim, assumindo que André tem os
+direitos de uso. É uma paisagem genérica (colina ao pôr do sol com baía ao fundo), não representa
+nenhum local real de nenhum caso da camada de Avistamentos — é só o "saguão" visual do modo chão.
 
 `2k_bennu_asteroid_nasa.jpg` é diferente do resto do pacote: vem do mosaico global do asteroide
 **101955 Bennu**, fotografado de verdade pela sonda **OSIRIS-REx** (NASA), via

@@ -87,6 +87,24 @@
   }
   #infoPanel .name{font-size:16px;font-weight:bold;color:#fff2cc;letter-spacing:0.5px;}
   #infoPanel .stat{font-size:11px;opacity:0.8;margin-top:3px;}
+  #caseDetailPanel{
+    position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+    width:min(480px, calc(100vw - 32px));max-height:80vh;overflow-y:auto;
+    color:#eaf6ff;background:rgba(8,12,20,0.92);padding:16px 18px;border-radius:12px;
+    z-index:20;display:none;border:1px solid rgba(140,180,255,0.3);backdrop-filter:blur(4px);
+  }
+  #caseDetailPanel .name{font-size:17px;font-weight:bold;color:#fff2cc;margin-bottom:8px;padding-right:24px;}
+  #caseDetailPanel .text{font-size:12px;line-height:1.55;margin-top:10px;}
+  #caseDetailPanel .source{font-size:10px;opacity:0.65;margin-top:8px;font-style:italic;}
+  #caseDetailClose{
+    position:absolute;top:10px;right:12px;background:none;border:none;color:#cfe8ff;
+    font-family:monospace;font-size:15px;cursor:pointer;padding:2px 6px;
+  }
+  #caseDetailGallery{display:flex;gap:6px;overflow-x:auto;margin-top:4px;}
+  #caseDetailGallery img{height:130px;border-radius:6px;flex:0 0 auto;}
+  #caseDetailGallery .caseNoImg{
+    font-size:10px;opacity:0.55;padding:14px 0;font-style:italic;
+  }
   #loading{
     position:fixed;inset:0;background:#000;color:#cfe8ff;display:flex;
     align-items:center;justify-content:center;z-index:100;font-size:13px;letter-spacing:1px;
@@ -116,7 +134,7 @@
 <body>
 
 <div id="loading">calculando posições reais...</div>
-<div id="versionBadge">StarVeu — build 2026-07-09e</div>
+<div id="versionBadge">StarVeu — build 2026-07-10</div>
 
 <div id="hud">
   <div class="clock" id="clockText">—</div>
@@ -143,6 +161,14 @@
   <button class="layerCatBtn" id="solarCatBtn">☀ Solar</button>
   <button class="layerCatBtn" id="groundSightingsBtn" style="display:none;">🛸 Avistamentos</button>
   <div id="bodyList"></div>
+</div>
+
+<div id="caseDetailPanel">
+  <button id="caseDetailClose">✕</button>
+  <div class="name" id="caseDetailName">—</div>
+  <div id="caseDetailGallery"></div>
+  <div class="text" id="caseDetailText">—</div>
+  <div class="source" id="caseDetailSource">—</div>
 </div>
 
 <div id="infoPanel">
@@ -1191,13 +1217,15 @@ function latLonToLocalOffset(lat, lon, radius){
     z: -radius*Math.cos(latRad)*Math.sin(lonRad),
   };
 }
+// campo `images`: caminhos pra fotos do caso (aparecem na galeria do painel de detalhe dentro
+// do modo chão) — vazio por enquanto, André vai mandando aos poucos, mesmo esquema do panorama.
 const SIGHTING_CASES = [
   { key:'roswell', name:'Roswell (1947)', location:'Roswell, Novo México, EUA', lat:33.89, lon:-104.53, year:1947,
     summary:'Em julho de 1947, destroços encontrados num rancho perto de Roswell viraram manchete de jornal local como "disco voador capturado" — no dia seguinte a força aérea dos EUA corrigiu a versão pra "balão meteorológico". Décadas depois, documentos desclassificados apontam que era parte do Projeto Mogul (balões de vigilância de testes nucleares soviéticos, secreto na época) — não uma nave. Ainda assim, virou o caso mais famoso da cultura ufológica.',
-    source:'Relatórios da USAF sobre Roswell (1994/1997, desclassificados). Local aproximado (região do Foster Ranch) — a coordenada exata é disputada entre relatos.' },
+    source:'Relatórios da USAF sobre Roswell (1994/1997, desclassificados). Local aproximado (região do Foster Ranch) — a coordenada exata é disputada entre relatos.', images:[] },
   { key:'varginha', name:'Caso Varginha (1996)', location:'Varginha, Minas Gerais, Brasil', lat:-21.5544, lon:-45.4308, year:1996,
     summary:'Em janeiro de 1996, moradores de Varginha relataram ter visto uma criatura estranha nas ruas da cidade, com relatos não confirmados oficialmente de envolvimento do Corpo de Bombeiros e do Exército num resgate. Nenhum documento oficial brasileiro confirma a versão "extraterrestre"; a hipótese mais citada por céticos é confusão com um morador com deficiência física. Ficou conhecido como o caso brasileiro mais famoso internacionalmente.',
-    source:'Cobertura jornalística da época e retrospectivas (ex. G1, Folha de S.Paulo). Sem documento oficial confirmando ser/nave extraterrestre.' },
+    source:'Cobertura jornalística da época e retrospectivas (ex. G1, Folha de S.Paulo). Sem documento oficial confirmando ser/nave extraterrestre.', images:[] },
 ];
 const sightingMarkers = [];
 const sightingGroup = registerItemGroup('sightings', 'Avistamentos', new THREE.Group());
@@ -1502,10 +1530,30 @@ function renderGroundBodyList(){
     d.className = 'bItem';
     d.textContent = `🛸 ${s.def.name}`;
     d.title = s.def.location;
-    d.addEventListener('click', ()=>{ exitGroundMode(); focusOnCase(s.group, s.def); });
+    d.addEventListener('click', ()=> showCaseDetail(s.def));
     bodyListEl.appendChild(d);
   });
 }
+
+// painel de detalhe do caso — abre POR CIMA da cena do chão (a 360° continua ali atrás, dá
+// pra fechar e continuar olhando em volta), em vez de sair e voltar pro planeta como antes.
+const caseDetailPanelEl = document.getElementById('caseDetailPanel');
+const caseDetailNameEl = document.getElementById('caseDetailName');
+const caseDetailGalleryEl = document.getElementById('caseDetailGallery');
+const caseDetailTextEl = document.getElementById('caseDetailText');
+const caseDetailSourceEl = document.getElementById('caseDetailSource');
+function showCaseDetail(def){
+  caseDetailNameEl.textContent = `${def.name} — ${def.location}`;
+  caseDetailTextEl.textContent = def.summary;
+  caseDetailSourceEl.textContent = 'Fonte: ' + def.source;
+  caseDetailGalleryEl.innerHTML = (def.images && def.images.length)
+    ? def.images.map(src=>`<img src="${src}" alt="${def.name}">`).join('')
+    : '<div class="caseNoImg">Sem fotos deste caso ainda</div>';
+  caseDetailPanelEl.style.display = 'block';
+}
+document.getElementById('caseDetailClose').addEventListener('click', ()=>{
+  caseDetailPanelEl.style.display = 'none';
+});
 renderSolarBodyList();
 
 solarCatBtnEl.addEventListener('click', function(){
@@ -1785,34 +1833,16 @@ let groundMode = false;
 const groundGroup = new THREE.Group();
 groundGroup.visible = false;
 scene.add(groundGroup);
+// foto panorâmica 360° real (equiretangular 2:1) — André forneceu `texturas/terrainterno.png`,
+// mapeada por dentro de uma esfera grande com a câmera no centro. Arrastar já funciona de graça:
+// é o mesmo yaw/pitch do fly-cam normal, só que sem "pra onde ir", só "pra onde olhar".
 (function buildGroundScene(){
-  const ground = new THREE.Mesh(
-    new THREE.PlaneGeometry(500,500,1,1),
-    new THREE.MeshStandardMaterial({ color:0x3f5a34, roughness:1, metalness:0 })
+  const panoTex = texLoader.load(TEX+'terrainterno.png');
+  const panoSphere = new THREE.Mesh(
+    new THREE.SphereGeometry(400, 60, 40),
+    new THREE.MeshBasicMaterial({ map: panoTex, side: THREE.BackSide })
   );
-  ground.rotation.x = -Math.PI/2;
-  groundGroup.add(ground);
-
-  // céu: esfera grande vista de dentro, gradiente simples por vértice (azul no topo, claro no horizonte)
-  const skyGeo = new THREE.SphereGeometry(400, 32, 24);
-  const posAttr = skyGeo.attributes.position;
-  const colors = new Float32Array(posAttr.count*3);
-  const top = new THREE.Color(0x2f5fa8), horizon = new THREE.Color(0xcfe0e8);
-  for (let i=0;i<posAttr.count;i++){
-    const y = posAttr.getY(i)/400; // -1 (baixo) .. 1 (topo)
-    const t = Math.max(0, y);
-    const c = horizon.clone().lerp(top, t);
-    colors[i*3]=c.r; colors[i*3+1]=c.g; colors[i*3+2]=c.b;
-  }
-  skyGeo.setAttribute('color', new THREE.BufferAttribute(colors,3));
-  const sky = new THREE.Mesh(skyGeo, new THREE.MeshBasicMaterial({ vertexColors:true, side:THREE.BackSide, fog:false }));
-  groundGroup.add(sky);
-
-  const groundLight = new THREE.HemisphereLight(0xffffff, 0x3f5a34, 1.1);
-  groundGroup.add(groundLight);
-  const sunish = new THREE.DirectionalLight(0xfff2d8, 0.9);
-  sunish.position.set(80,120,60);
-  groundGroup.add(sunish);
+  groundGroup.add(panoSphere);
 })();
 
 const enterPlanetBtnEl = document.getElementById('enterPlanetBtn');
@@ -1837,6 +1867,7 @@ function exitGroundMode(){
   groundMode = false;
   solarGroup.visible = true; skyGroup.visible = true; sunLight.visible = true;
   groundGroup.visible = false;
+  caseDetailPanelEl.style.display = 'none';
   backBtnMode = 'starSystem';
   backBtnEl.textContent = '← Voltar ao Sistema Solar';
   backBtnEl.style.display = 'none';
