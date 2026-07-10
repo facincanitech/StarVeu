@@ -148,7 +148,7 @@
 <body>
 
 <div id="loading">calculando posições reais...</div>
-<div id="versionBadge">StarVeu — build 2026-07-10c</div>
+<div id="versionBadge">StarVeu — build 2026-07-10d</div>
 
 <div id="hud">
   <div class="clock" id="clockText">—</div>
@@ -1695,7 +1695,7 @@ function exitStarSystem(){
   backBtnEl.style.display = 'none';
 
   camera.position.set(0, 90, 220);
-  yaw = -Math.PI/2; pitch = -0.35; applyLook();
+  yaw = -Math.PI/4; pitch = -0.35; applyLook();
   infoPanelEl.style.display = 'none';
 }
 
@@ -1728,7 +1728,9 @@ function focusOn(key){
 }
 
 // ---------- CÂMERA LIVRE (fly-cam) ----------
-let yaw = -Math.PI/2, pitch = -0.35;
+// yaw inicial: -90° olhava pra Saturno; André pediu 45° pra esquerda (só no horizontal, mesma
+// altura/pitch) pra abrir olhando pra Terra em vez disso.
+let yaw = -Math.PI/4, pitch = -0.35;
 const moveState = { fwd:false, back:false, left:false, right:false, up:false, down:false };
 let dragging = false, lastX=0, lastY=0;
 let flying = false, flyTarget=null, flyStartPos=null, flyStartQuat=null, flyProgress=0;
@@ -1797,7 +1799,7 @@ function exitGroundMode(){
   bodyListEl.classList.remove('open'); groundSightingsBtnEl.classList.remove('open');
   renderSolarBodyList();
   camera.position.set(0, 90, 220);
-  yaw = -Math.PI/2; pitch = -0.35; applyLook();
+  yaw = -Math.PI/4; pitch = -0.35; applyLook();
 }
 enterPlanetBtnEl.addEventListener('click', enterGroundMode);
 
