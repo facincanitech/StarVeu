@@ -148,7 +148,7 @@
 <body>
 
 <div id="loading">calculando posições reais...</div>
-<div id="versionBadge">StarVeu — build 2026-07-10b</div>
+<div id="versionBadge">StarVeu — build 2026-07-10c</div>
 
 <div id="hud">
   <div class="clock" id="clockText">—</div>
@@ -1753,11 +1753,12 @@ let groundMode = false;
 const groundGroup = new THREE.Group();
 groundGroup.visible = false;
 scene.add(groundGroup);
-// foto panorâmica 360° real (equiretangular 2:1) — André forneceu `texturas/terrainterno.png`,
+// foto panorâmica 360° real (equiretangular 2:1) — André forneceu `texturas/landscape4k.png`
+// (versão upscalada 4K de `terrainterno.png`, 3548x1774, ~9MB),
 // mapeada por dentro de uma esfera grande com a câmera no centro. Arrastar já funciona de graça:
 // é o mesmo yaw/pitch do fly-cam normal, só que sem "pra onde ir", só "pra onde olhar".
 (function buildGroundScene(){
-  const panoTex = texLoader.load(TEX+'terrainterno.png');
+  const panoTex = texLoader.load(TEX+'landscape4k.png');
   const panoSphere = new THREE.Mesh(
     new THREE.SphereGeometry(400, 60, 40),
     new THREE.MeshBasicMaterial({ map: panoTex, side: THREE.BackSide })
