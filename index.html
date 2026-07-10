@@ -98,6 +98,13 @@
     padding:8px 16px;cursor:pointer;backdrop-filter:blur(3px);
   }
   #backBtn:hover{ background:rgba(30,50,80,0.85); }
+  #enterPlanetBtn{
+    position:fixed;bottom:70px;left:50%;transform:translateX(-50%);z-index:11;
+    display:none;font-family:monospace;font-size:12px;background:rgba(20,40,20,0.75);
+    color:#dfffcf;border:1px solid rgba(150,255,140,0.35);border-radius:8px;
+    padding:8px 16px;cursor:pointer;backdrop-filter:blur(3px);
+  }
+  #enterPlanetBtn:hover{ background:rgba(30,70,30,0.85); }
   #warpOverlay{
     position:fixed;inset:0;z-index:50;pointer-events:none;opacity:0;
     background:repeating-conic-gradient(from 0deg, rgba(255,255,255,0.9) 0deg 1deg, transparent 1deg 6deg);
@@ -109,7 +116,7 @@
 <body>
 
 <div id="loading">calculando posições reais...</div>
-<div id="versionBadge">StarVeu — build 2026-07-09d</div>
+<div id="versionBadge">StarVeu — build 2026-07-09e</div>
 
 <div id="hud">
   <div class="clock" id="clockText">—</div>
@@ -134,6 +141,7 @@
 
 <div id="solarPanelWrap">
   <button class="layerCatBtn" id="solarCatBtn">☀ Solar</button>
+  <button class="layerCatBtn" id="groundSightingsBtn" style="display:none;">🛸 Avistamentos</button>
   <div id="bodyList"></div>
 </div>
 
@@ -145,6 +153,7 @@
 </div>
 
 <button id="backBtn">← Voltar ao Sistema Solar</button>
+<button id="enterPlanetBtn" style="display:none;">↓ Entrar na Terra</button>
 <div id="warpOverlay"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -1159,6 +1168,7 @@ const phenomenaFleetShips = [];
   });
 })();
 function showBodyInfo(def){
+  enterPlanetBtnEl.style.display = 'none';
   infoNameEl.textContent = def.name;
   infoDistEl.textContent = def.status || '';
   infoPeriodEl.textContent = '';
@@ -1464,21 +1474,45 @@ document.querySelectorAll('.layerCatBtn[data-layer]').forEach(btn=>{
   });
 });
 
-// ---------- LISTA DE CORPOS (painel lateral) ----------
+// ---------- LISTA DE CORPOS (painel lateral direito) ----------
+// o mesmo #bodyList é reaproveitado pra duas coisas: lista de planetas (padrão) e lista de
+// avistamentos (só dentro do modo "entrar no planeta" — ver seção CÂMERA LIVRE / modo chão).
 const bodyListEl = document.getElementById('bodyList');
-BODIES.forEach(def=>{
-  const d = document.createElement('div');
-  d.className = 'bItem';
-  d.textContent = def.name;
-  d.addEventListener('click', ()=> focusOn(def.key));
-  bodyListEl.appendChild(d);
-});
-const moonRow = document.createElement('div');
-moonRow.className = 'bItem'; moonRow.textContent = 'Lua';
-moonRow.addEventListener('click', ()=> focusOn('Moon'));
-bodyListEl.appendChild(moonRow);
+const solarCatBtnEl = document.getElementById('solarCatBtn');
+const groundSightingsBtnEl = document.getElementById('groundSightingsBtn');
 
-document.getElementById('solarCatBtn').addEventListener('click', function(){
+function renderSolarBodyList(){
+  bodyListEl.innerHTML = '';
+  BODIES.forEach(def=>{
+    const d = document.createElement('div');
+    d.className = 'bItem';
+    d.textContent = def.name;
+    d.addEventListener('click', ()=> focusOn(def.key));
+    bodyListEl.appendChild(d);
+  });
+  const moonRow = document.createElement('div');
+  moonRow.className = 'bItem'; moonRow.textContent = 'Lua';
+  moonRow.addEventListener('click', ()=> focusOn('Moon'));
+  bodyListEl.appendChild(moonRow);
+}
+function renderGroundBodyList(){
+  bodyListEl.innerHTML = '';
+  sightingMarkers.forEach(s=>{
+    const d = document.createElement('div');
+    d.className = 'bItem';
+    d.textContent = `🛸 ${s.def.name}`;
+    d.title = s.def.location;
+    d.addEventListener('click', ()=>{ exitGroundMode(); focusOnCase(s.group, s.def); });
+    bodyListEl.appendChild(d);
+  });
+}
+renderSolarBodyList();
+
+solarCatBtnEl.addEventListener('click', function(){
+  bodyListEl.classList.toggle('open');
+  this.classList.toggle('open', bodyListEl.classList.contains('open'));
+});
+groundSightingsBtnEl.addEventListener('click', function(){
   bodyListEl.classList.toggle('open');
   this.classList.toggle('open', bodyListEl.classList.contains('open'));
 });
@@ -1491,6 +1525,7 @@ const infoPeriodEl = document.getElementById('infoPeriod');
 const infoDiamEl = document.getElementById('infoDiam');
 
 function showInfo(key){
+  enterPlanetBtnEl.style.display = (key === 'Earth' && !groundMode && !earthMapMode) ? 'block' : 'none';
   if (key === 'Moon'){
     infoNameEl.textContent = 'Lua';
     infoDistEl.textContent = 'Distância média da Terra: ~384.400 km';
@@ -1586,6 +1621,7 @@ function addFictionPlanetFeatures(pMesh, p){
   }
 }
 function enterStarSystem(def){
+  enterPlanetBtnEl.style.display = 'none';
   while (starSystemGroup.children.length) starSystemGroup.remove(starSystemGroup.children[0]);
   starPlanets = [];
 
@@ -1667,6 +1703,7 @@ function warpToSolarSystem(){
 }
 backBtnEl.addEventListener('click', ()=>{
   if (backBtnMode === 'earthMap') exitEarthMap();
+  else if (backBtnMode === 'ground') exitGroundMode();
   else warpToSolarSystem();
 });
 
@@ -1738,6 +1775,80 @@ function exitEarthMap(){
   backBtnEl.style.display = 'none';
   infoPanelEl.style.display = 'none';
 }
+
+// ---------- "MODO CHÃO": cena separada, tipo tela inicial do Stellarium — pousa numa planície
+// genérica (não é nenhum lugar real, é só o "saguão" visual), olha em volta livremente, e o painel
+// da direita vira a lista de Avistamentos (entrar em um caso sai do chão e vai pro modo globo,
+// já mirando naquele local). Só disponível pra Terra, por enquanto — não é astronomicamente
+// exato (sem posição real do sol no céu ainda), é decorativo/funcional pra dar acesso à camada.
+let groundMode = false;
+const groundGroup = new THREE.Group();
+groundGroup.visible = false;
+scene.add(groundGroup);
+(function buildGroundScene(){
+  const ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(500,500,1,1),
+    new THREE.MeshStandardMaterial({ color:0x3f5a34, roughness:1, metalness:0 })
+  );
+  ground.rotation.x = -Math.PI/2;
+  groundGroup.add(ground);
+
+  // céu: esfera grande vista de dentro, gradiente simples por vértice (azul no topo, claro no horizonte)
+  const skyGeo = new THREE.SphereGeometry(400, 32, 24);
+  const posAttr = skyGeo.attributes.position;
+  const colors = new Float32Array(posAttr.count*3);
+  const top = new THREE.Color(0x2f5fa8), horizon = new THREE.Color(0xcfe0e8);
+  for (let i=0;i<posAttr.count;i++){
+    const y = posAttr.getY(i)/400; // -1 (baixo) .. 1 (topo)
+    const t = Math.max(0, y);
+    const c = horizon.clone().lerp(top, t);
+    colors[i*3]=c.r; colors[i*3+1]=c.g; colors[i*3+2]=c.b;
+  }
+  skyGeo.setAttribute('color', new THREE.BufferAttribute(colors,3));
+  const sky = new THREE.Mesh(skyGeo, new THREE.MeshBasicMaterial({ vertexColors:true, side:THREE.BackSide, fog:false }));
+  groundGroup.add(sky);
+
+  const groundLight = new THREE.HemisphereLight(0xffffff, 0x3f5a34, 1.1);
+  groundGroup.add(groundLight);
+  const sunish = new THREE.DirectionalLight(0xfff2d8, 0.9);
+  sunish.position.set(80,120,60);
+  groundGroup.add(sunish);
+})();
+
+const enterPlanetBtnEl = document.getElementById('enterPlanetBtn');
+function enterGroundMode(){
+  flying = false; earthMapMode = false;
+  groundMode = true;
+  solarGroup.visible = false; skyGroup.visible = false; sunLight.visible = false;
+  groundGroup.visible = true;
+  camera.position.set(0, 1.7, 0);
+  yaw = -Math.PI/2; pitch = -0.05; applyLook();
+  backBtnMode = 'ground';
+  backBtnEl.textContent = '← Sair da Terra';
+  backBtnEl.style.display = 'block';
+  enterPlanetBtnEl.style.display = 'none';
+  infoPanelEl.style.display = 'none';
+  solarCatBtnEl.style.display = 'none';
+  groundSightingsBtnEl.style.display = 'block';
+  renderGroundBodyList();
+  bodyListEl.classList.remove('open'); groundSightingsBtnEl.classList.remove('open');
+}
+function exitGroundMode(){
+  groundMode = false;
+  solarGroup.visible = true; skyGroup.visible = true; sunLight.visible = true;
+  groundGroup.visible = false;
+  backBtnMode = 'starSystem';
+  backBtnEl.textContent = '← Voltar ao Sistema Solar';
+  backBtnEl.style.display = 'none';
+  solarCatBtnEl.style.display = 'block';
+  groundSightingsBtnEl.style.display = 'none';
+  bodyListEl.classList.remove('open'); groundSightingsBtnEl.classList.remove('open');
+  renderSolarBodyList();
+  camera.position.set(0, 90, 220);
+  yaw = -Math.PI/2; pitch = -0.35; applyLook();
+}
+enterPlanetBtnEl.addEventListener('click', enterGroundMode);
+
 function rightVec(){ return new THREE.Vector3(1,0,0).applyQuaternion(camera.quaternion); }
 
 const dom = renderer.domElement;
@@ -1995,13 +2106,14 @@ function animate(){
       yaw = e.y; pitch = e.x;
     }
   } else {
-    const speed = (18 + camera.position.length()*0.05) * dt;
+    const speed = groundMode ? 6*dt : (18 + camera.position.length()*0.05) * dt;
     if (moveState.fwd) camera.position.addScaledVector(forwardVec(), speed);
     if (moveState.back) camera.position.addScaledVector(forwardVec(), -speed);
     if (moveState.right) camera.position.addScaledVector(rightVec(), speed);
     if (moveState.left) camera.position.addScaledVector(rightVec(), -speed);
     if (moveState.up) camera.position.y += speed;
     if (moveState.down) camera.position.y -= speed;
+    if (groundMode) camera.position.y = Math.max(1.2, Math.min(30, camera.position.y)); // não afunda no chão nem sai voando longe demais
   }
 
   Object.values(objects).forEach(o=>{
