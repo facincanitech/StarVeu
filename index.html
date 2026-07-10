@@ -33,7 +33,8 @@
   .layerCatBtn.open{background:#4a2a70;color:#fff;border-color:#c07fff;}
   #layerPanel{
     display:none;margin-top:6px;background:rgba(10,8,16,0.85);border:1px solid rgba(192,127,255,0.28);
-    border-radius:8px;padding:8px 10px;max-height:200px;overflow-y:auto;min-width:170px;
+    border-radius:8px;padding:8px 10px;max-height:38vh;overflow-y:auto;
+    width:min(340px, calc(100vw - 24px));
   }
   #layerPanel.open{display:block;}
   #layerPanel .panelHead{
@@ -44,14 +45,34 @@
     font-size:9px;color:#9fc4e8;cursor:pointer;background:none;border:none;
     font-family:monospace;padding:0;text-decoration:underline;
   }
-  #layerPanel label{display:flex;align-items:center;gap:6px;font-size:11px;padding:2px 0;cursor:pointer;color:#dfe8f5;}
+  #layerPanel .panelItems{display:flex;flex-wrap:wrap;gap:2px 12px;}
+  #layerPanel label{display:flex;align-items:center;gap:5px;font-size:11px;padding:2px 0;cursor:pointer;color:#dfe8f5;white-space:nowrap;}
   #layerPanel input{accent-color:#c07fff;cursor:pointer;}
-  #bodyList{
-    position:fixed;top:12px;right:12px;color:#cfe8ff;font-size:11px;
-    background:rgba(6,10,18,0.55);padding:10px 12px;border-radius:8px;
-    z-index:10;backdrop-filter:blur(3px);border:1px solid rgba(140,180,255,0.15);
-    max-height:80vh;overflow-y:auto;
+  #layerPanel .panelSpeedRow{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;}
+  #layerPanel .panelDateRow{display:flex;flex-wrap:wrap;align-items:center;gap:5px;font-size:11px;color:#dfe8f5;}
+  #layerPanel .panelDateRow input{
+    font-family:monospace;font-size:11px;background:#111c2e;color:#dfe8f5;
+    border:1px solid #2c4160;border-radius:4px;padding:3px 5px;width:52px;
   }
+  #layerPanel .panelDateGo{
+    font-family:monospace;font-size:10px;background:#2a4a70;color:#fff;
+    border:1px solid #7fbfff;border-radius:4px;padding:4px 9px;cursor:pointer;
+  }
+  #layerPanel .neoItem{
+    display:flex;flex-direction:column;gap:1px;padding:5px 6px;border-radius:4px;min-width:150px;
+  }
+  #layerPanel .neoItem:hover{background:rgba(140,180,255,0.1);}
+  #layerPanel .neoItem .neoName{font-size:11px;color:#dfe8f5;}
+  #layerPanel .neoItem .neoMeta{font-size:9px;color:#9fc4e8;opacity:0.8;}
+  #layerPanel .neoItem.hazard .neoName{color:#ff9a7a;}
+  #solarPanelWrap{ position:fixed; top:12px; right:12px; z-index:10; }
+  #bodyList{
+    display:none;margin-top:6px;color:#cfe8ff;font-size:11px;
+    background:rgba(6,10,18,0.85);padding:8px 10px;border-radius:8px;
+    backdrop-filter:blur(3px);border:1px solid rgba(140,180,255,0.28);
+    max-height:60vh;overflow-y:auto;min-width:150px;
+  }
+  #bodyList.open{display:block;}
   #bodyList div.bItem{
     padding:5px 6px;cursor:pointer;border-radius:4px;white-space:nowrap;
   }
@@ -87,22 +108,18 @@
 <body>
 
 <div id="loading">calculando posições reais...</div>
-<div id="versionBadge">StarVeu — v1</div>
+<div id="versionBadge">StarVeu — build 2026-07-09</div>
 
 <div id="hud">
   <div class="clock" id="clockText">—</div>
-  <div id="speedRow">
-    <button class="speedBtn active" data-mult="1">Tempo real</button>
-    <button class="speedBtn" data-mult="86400">1 dia/s</button>
-    <button class="speedBtn" data-mult="2592000">1 mês/s</button>
-    <button class="speedBtn" data-mult="31536000">1 ano/s</button>
-  </div>
   <div id="layerRow">
+    <button class="layerCatBtn" data-layer="time">⏱ Tempo</button>
     <button class="layerCatBtn" data-layer="zodiac">♈ Zodíaco</button>
     <button class="layerCatBtn" data-layer="theoretical">🧪 Teórico</button>
     <button class="layerCatBtn" data-layer="fiction">🖖 Ficção</button>
     <button class="layerCatBtn" data-layer="phenomena">👁 Fenômenos</button>
-    <button class="layerCatBtn" data-layer="realExtra">☄️ Catálogo real</button>
+    <button class="layerCatBtn" data-layer="realExtra">☄️ Corpos menores</button>
+    <button class="layerCatBtn" data-layer="neos">🛰 NEOs</button>
     <button id="labelsToggle" class="layerCatBtn open">🏷 Nomes</button>
   </div>
   <div id="layerPanel"></div>
@@ -113,7 +130,10 @@
   </div>
 </div>
 
-<div id="bodyList"></div>
+<div id="solarPanelWrap">
+  <button class="layerCatBtn" id="solarCatBtn">☀ Solar</button>
+  <div id="bodyList"></div>
+</div>
 
 <div id="infoPanel">
   <div class="name" id="infoName">—</div>
@@ -127,6 +147,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/astronomy-engine/astronomy.browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 (function(){
 "use strict";
@@ -137,16 +158,19 @@
 const AU_TO_UNITS = 68; // escala linear: 1 UA real = 68 unidades de cena (era 42 — sistema ficava comprimido/apertado demais)
 const TEX = 'texturas/'; // pacote CC-BY 4.0 da Solar System Scope — ver CREDITS.md
 // rotationHours = período de rotação sideral REAL (pro giro do planeta na tela bater com a realidade em "tempo real")
+// e/i/om/w = elementos orbitais médios J2000 REAIS (excentricidade, inclinação, nó ascendente,
+// argumento do periélio) — usados só pra desenhar a linha de órbita como elipse de verdade, não
+// círculo perfeito (senão a linha não fica "rente" com o planeta em órbitas mais excêntricas).
 const BODIES = [
   { key:'Sun',     name:'Sol',      color:0xffcf70, radius:9,   emissive:0xffb347, isSun:true, texture:TEX+'2k_sun.jpg', rotationHours:609.12 },
-  { key:'Mercury', name:'Mercúrio', color:0x9e9e9e, radius:1.1, auRef:0.39, periodRef:'88 dias',    diamRef:'4.879 km',   texture:TEX+'2k_mercury.jpg', rotationHours:1407.6 },
-  { key:'Venus',   name:'Vênus',    color:0xe0c48a, radius:1.9, auRef:0.72, periodRef:'225 dias',   diamRef:'12.104 km', texture:TEX+'2k_venus_surface.jpg', atmosphere:TEX+'2k_venus_atmosphere.jpg', rotationHours:5832.5 },
-  { key:'Earth',   name:'Terra',    color:0x3f7fd6, radius:2.0, auRef:1.00, periodRef:'365,25 dias',diamRef:'12.742 km', texture:TEX+'2k_earth_daymap.jpg', nightTexture:TEX+'2k_earth_nightmap.jpg', clouds:TEX+'2k_earth_clouds.jpg', rotationHours:23.9345 },
-  { key:'Mars',    name:'Marte',    color:0xc1552c, radius:1.4, auRef:1.52, periodRef:'687 dias',   diamRef:'6.779 km',  texture:TEX+'2k_mars.jpg', rotationHours:24.6229 },
-  { key:'Jupiter', name:'Júpiter',  color:0xd9b38c, radius:5.4, auRef:5.20, periodRef:'11,9 anos',  diamRef:'139.820 km',texture:TEX+'2k_jupiter.jpg', rotationHours:9.925 },
-  { key:'Saturn',  name:'Saturno',  color:0xe8d5a3, radius:4.6, auRef:9.58, periodRef:'29,5 anos',  diamRef:'116.460 km', ring:true, texture:TEX+'2k_saturn.jpg', ringTexture:TEX+'2k_saturn_ring_alpha.png', rotationHours:10.656 },
-  { key:'Uranus',  name:'Urano',    color:0x9fd4e0, radius:3.0, auRef:19.2, periodRef:'84 anos',    diamRef:'50.724 km', texture:TEX+'2k_uranus.jpg', rotationHours:17.24 },
-  { key:'Neptune', name:'Netuno',   color:0x5c7cf0, radius:2.9, auRef:30.05,periodRef:'165 anos',   diamRef:'49.244 km', texture:TEX+'2k_neptune.jpg', rotationHours:16.11 },
+  { key:'Mercury', name:'Mercúrio', color:0x9e9e9e, radius:1.1, auRef:0.39, periodRef:'88 dias',    diamRef:'4.879 km',   texture:TEX+'2k_mercury.jpg', rotationHours:1407.6, e:0.20563, i:7.005, om:48.331, w:29.124 },
+  { key:'Venus',   name:'Vênus',    color:0xe0c48a, radius:1.9, auRef:0.72, periodRef:'225 dias',   diamRef:'12.104 km', texture:TEX+'2k_venus_surface.jpg', atmosphere:TEX+'2k_venus_atmosphere.jpg', rotationHours:5832.5, e:0.00677, i:3.395, om:76.680, w:54.884 },
+  { key:'Earth',   name:'Terra',    color:0x3f7fd6, radius:2.0, auRef:1.00, periodRef:'365,25 dias',diamRef:'12.742 km', texture:TEX+'2k_earth_daymap.jpg', nightTexture:TEX+'2k_earth_nightmap.jpg', clouds:TEX+'2k_earth_clouds.jpg', rotationHours:23.9345, e:0.01671, i:0.000, om:0, w:102.947 },
+  { key:'Mars',    name:'Marte',    color:0xc1552c, radius:1.4, auRef:1.52, periodRef:'687 dias',   diamRef:'6.779 km',  texture:TEX+'2k_mars.jpg', rotationHours:24.6229, e:0.09340, i:1.850, om:49.558, w:286.502 },
+  { key:'Jupiter', name:'Júpiter',  color:0xd9b38c, radius:5.4, auRef:5.20, periodRef:'11,9 anos',  diamRef:'139.820 km',texture:TEX+'2k_jupiter.jpg', rotationHours:9.925, e:0.04849, i:1.303, om:100.464, w:273.867 },
+  { key:'Saturn',  name:'Saturno',  color:0xe8d5a3, radius:4.6, auRef:9.58, periodRef:'29,5 anos',  diamRef:'116.460 km', ring:true, texture:TEX+'2k_saturn.jpg', ringTexture:TEX+'2k_saturn_ring_alpha.png', rotationHours:10.656, e:0.05551, i:2.489, om:113.665, w:339.392 },
+  { key:'Uranus',  name:'Urano',    color:0x9fd4e0, radius:3.0, auRef:19.2, periodRef:'84 anos',    diamRef:'50.724 km', texture:TEX+'2k_uranus.jpg', rotationHours:17.24, e:0.04630, i:0.773, om:74.006, w:96.999 },
+  { key:'Neptune', name:'Netuno',   color:0x5c7cf0, radius:2.9, auRef:30.05,periodRef:'165 anos',   diamRef:'49.244 km', texture:TEX+'2k_neptune.jpg', rotationHours:16.11, e:0.00899, i:1.770, om:131.784, w:276.336 },
 ];
 const MOON_VISUAL_RADIUS_UNITS = 17; // órbita da Lua artisticamente ampliada (era 9.5 — ficava colada na Terra, quase dentro da frota de naves)
 const MOON_TEXTURE = TEX+'2k_moon.jpg';
@@ -244,6 +268,29 @@ function orbitLine(radiusUnits){
   return new THREE.LineLoop(geo, new THREE.LineBasicMaterial({ color:0x3a5570, transparent:true, opacity:0.35 }));
 }
 
+const OBLIQUITY_RAD = 23.4392911 * Math.PI/180; // obliquidade J2000: converte eclíptica -> equatorial, mesmo referencial que o astronomy-engine usa pros planetas
+// linha de órbita como elipse real (não círculo) — usa os elementos e/i/om/w de cada planeta,
+// senão a linha não passa exatamente pelo planeta em órbitas mais excêntricas (ex. Mercúrio, Marte)
+function orbitEllipseLine(def, auToUnits){
+  const pts = [];
+  const om = def.om*Math.PI/180, w = def.w*Math.PI/180, inc = def.i*Math.PI/180;
+  const cosOm=Math.cos(om), sinOm=Math.sin(om), cosW=Math.cos(w), sinW=Math.sin(w), cosI=Math.cos(inc), sinI=Math.sin(inc);
+  for (let k=0;k<=96;k++){
+    const nu = (k/96)*Math.PI*2;
+    const r = def.auRef*(1-def.e*def.e)/(1+def.e*Math.cos(nu));
+    const xo = r*Math.cos(nu), yo = r*Math.sin(nu);
+    const xEcl = (cosOm*cosW - sinOm*sinW*cosI)*xo + (-cosOm*sinW - sinOm*cosW*cosI)*yo;
+    const yEcl = (sinOm*cosW + cosOm*sinW*cosI)*xo + (-sinOm*sinW + cosOm*cosW*cosI)*yo;
+    const zEcl = (sinW*sinI)*xo + (cosW*sinI)*yo;
+    const yEq = yEcl*Math.cos(OBLIQUITY_RAD) - zEcl*Math.sin(OBLIQUITY_RAD);
+    const zEq = yEcl*Math.sin(OBLIQUITY_RAD) + zEcl*Math.cos(OBLIQUITY_RAD);
+    // mesmo mapeamento (scene_x, scene_y, scene_z) = (v.x, v.z*0.35, v.y) usado pro planeta de verdade em updatePositions
+    pts.push(new THREE.Vector3(xEcl*auToUnits, zEq*auToUnits*0.35, yEq*auToUnits));
+  }
+  const geo = new THREE.BufferGeometry().setFromPoints(pts);
+  return new THREE.LineLoop(geo, new THREE.LineBasicMaterial({ color:0x3a5570, transparent:true, opacity:0.35 }));
+}
+
 const allLabels = []; // toda label criada entra aqui — permite ligar/desligar todos os nomes de uma vez
 let labelsVisible = true;
 function makeLabel(text){
@@ -302,7 +349,7 @@ BODIES.forEach(def=>{
     mesh.material.needsUpdate = true;
   }
   if (!def.isSun){
-    solarGroup.add(orbitLine(def.auRef * AU_TO_UNITS));
+    solarGroup.add(orbitEllipseLine(def, AU_TO_UNITS));
   }
   const label = makeLabel(def.name);
   solarGroup.add(label);
@@ -390,52 +437,83 @@ const ZODIAC_CONSTELLATIONS = [
   { name:'Áries', zodiac:true, stars:[
     star('Hamal','Hamal',0xffc98a,'~4.480 K','Gigante laranja (K2III)','≈66 anos-luz',12, 2.119, 23.462),
     star('Sheratan','Sheratan',0xdfeaff,'~8.000 K','Branca (A5V)','≈59 anos-luz',9, 1.911, 20.808),
-  ], lines:[['Hamal','Sheratan']] },
+    star('Mesarthim','Mesarthim',0xdfeaff,'~11.800 K','Branca (A1p, dupla)','≈164 anos-luz',7, 1.883, 19.294),
+  ], lines:[['Hamal','Sheratan'],['Sheratan','Mesarthim']] },
   { name:'Touro', zodiac:true, stars:[
     star('Aldebaran','Aldebaran',0xff9a5c,'~3.900 K','Gigante vermelha (K5III)','≈65 anos-luz',18, 4.599, 16.509),
     star('Elnath','Elnath',0xaad0ff,'~13.600 K','Gigante azul-branca (B7III)','≈134 anos-luz',11, 5.438, 28.608),
-  ], lines:[['Aldebaran','Elnath']] },
+    star('AinTauri','Ain',0xffc98a,'~5.000 K','Gigante laranja (K0III)','≈155 anos-luz',9, 4.477, 19.180),
+    star('PrimaHyadum','Prima Hyadum',0xffc98a,'~4.900 K','Gigante laranja (K0III)','≈154 anos-luz',9, 4.328, 15.628),
+    star('ZetaTauri','Zeta Tauri',0x9fc9ff,'~14.000 K','Gigante azul-branca (B2III)','≈440 anos-luz',9, 5.628, 21.143),
+  ], lines:[['PrimaHyadum','Aldebaran'],['Aldebaran','AinTauri'],['Aldebaran','Elnath'],['Elnath','ZetaTauri']] },
   { name:'Gêmeos', zodiac:true, stars:[
     star('Pollux','Pollux',0xffc98a,'~4.666 K','Gigante laranja (K0III)','≈34 anos-luz',14, 7.755, 28.026),
     star('Castor','Castor',0xdfeaff,'~10.286 K','Branca (A1V, múltipla)','≈51 anos-luz',11, 7.577, 31.889),
-  ], lines:[['Pollux','Castor']] },
+    star('Alhena','Alhena',0xdfeaff,'~9.260 K','Branca (A1IV)','≈109 anos-luz',10, 6.629, 16.399),
+    star('Wasat','Wasat',0xfff2cc,'~6.700 K','Amarelo-branca (F0IV, dupla)','≈59 anos-luz',8, 7.335, 21.982),
+    star('TejatPosterior','Tejat',0xff9a5c,'~3.600 K','Gigante vermelha (M3III)','≈230 anos-luz',10, 6.383, 22.514),
+  ], lines:[['Castor','Pollux'],['Pollux','Wasat'],['Wasat','Alhena'],['Castor','TejatPosterior']] },
   { name:'Câncer', zodiac:true, stars:[
     star('Acubens','Acubens',0xdfeaff,'~8.200 K','Branca (A5m)','≈174 anos-luz',8, 8.975, 11.858),
     star('AlTarf','Al Tarf',0xffc98a,'~4.000 K','Gigante laranja (K4III)','≈290 anos-luz',10, 8.275, 9.186),
-  ], lines:[['Acubens','AlTarf']] },
+    star('AsellusBorealis','Asellus Borealis',0xdfeaff,'~9.900 K','Branca (A1IV)','≈136 anos-luz',7, 8.727, 21.469),
+    star('AsellusAustralis','Asellus Australis',0xffc98a,'~4.700 K','Gigante laranja (K0III)','≈131 anos-luz',9, 8.744, 18.154),
+  ], lines:[['AlTarf','AsellusAustralis'],['AsellusAustralis','AsellusBorealis'],['AsellusAustralis','Acubens']] },
   { name:'Leão', zodiac:true, stars:[
     star('Regulus','Regulus',0xaad0ff,'~12.460 K','Azul-branca (B8V)','≈79 anos-luz',13, 10.140, 11.967),
     star('Denebola','Denebola',0xdfeaff,'~8.500 K','Branca (A3V)','≈36 anos-luz',9, 11.818, 14.572),
     star('Algieba','Algieba',0xffc98a,'~4.470 K','Gigante laranja (K1III)','≈130 anos-luz',11, 10.333, 19.842),
-  ], lines:[['Regulus','Algieba'],['Algieba','Denebola']] },
+    star('Zosma','Zosma',0xdfeaff,'~8.300 K','Branca (A4V)','≈58 anos-luz',9, 11.235, 20.524),
+    star('Chertan','Chertan',0xdfeaff,'~8.300 K','Branca (A2V)','≈165 anos-luz',8, 11.237, 15.430),
+    star('Adhafera','Adhafera',0xfff2cc,'~6.700 K','Amarelo-branca (F0III)','≈260 anos-luz',7, 10.278, 23.417),
+  ], lines:[['Regulus','Algieba'],['Algieba','Adhafera'],['Regulus','Zosma'],['Zosma','Chertan'],['Chertan','Denebola'],['Zosma','Denebola']] },
   { name:'Virgem', zodiac:true, stars:[
     star('Spica','Spica',0x9fc9ff,'~22.300 K','Azul (B1V)','≈250 anos-luz',15, 13.420, -11.161),
     star('Vindemiatrix','Vindemiatrix',0xfff2cc,'~5.000 K','Gigante amarela (G8III)','≈110 anos-luz',9, 13.036, 10.959),
-  ], lines:[['Spica','Vindemiatrix']] },
+    star('Porrima','Porrima',0xdfeaff,'~7.000 K','Branco-amarela (F0V, dupla)','≈39 anos-luz',9, 12.694, -1.449),
+    star('Zaniah','Zaniah',0xdfeaff,'~9.800 K','Branca (A2V)','≈265 anos-luz',7, 12.264, -0.667),
+    star('Zavijava','Zavijava',0xfff2cc,'~6.500 K','Branco-amarela (F9V)','≈36 anos-luz',7, 11.845, 1.765),
+    star('Auva','Auva',0xff9a5c,'~3.950 K','Gigante vermelha (M3III)','≈202 anos-luz',9, 12.926, 3.398),
+    star('Heze','Heze',0xdfeaff,'~8.900 K','Branca (A2V)','≈74 anos-luz',7, 13.572, -0.596),
+  ], lines:[['Zavijava','Zaniah'],['Zaniah','Porrima'],['Porrima','Auva'],['Auva','Vindemiatrix'],['Porrima','Heze'],['Heze','Spica']] },
   { name:'Libra', zodiac:true, stars:[
     star('Zubenelgenubi','Zubenelgenubi',0xdfeaff,'~8.700 K','Branca (A3V, múltipla)','≈77 anos-luz',9, 14.848, -16.042),
     star('Zubeneschamali','Zubeneschamali',0xaad0ff,'~12.000 K','Azul-branca (B8V)','≈185 anos-luz',11, 15.283, -9.383),
-  ], lines:[['Zubenelgenubi','Zubeneschamali']] },
+    star('Zubenelhakrabi','Zubenelhakrabi',0xffc98a,'~4.600 K','Gigante laranja (K0III)','≈153 anos-luz',7, 14.797, -14.789),
+    star('Brachium','Brachium',0xff9a5c,'~3.400 K','Gigante vermelha (M3III)','≈288 anos-luz',8, 15.067, -25.282),
+  ], lines:[['Zubenelgenubi','Zubeneschamali'],['Zubeneschamali','Zubenelhakrabi'],['Zubenelhakrabi','Brachium']] },
   { name:'Escorpião', zodiac:true, stars:[
     star('Antares','Antares',0xff6a3d,'~3.660 K','Supergigante vermelha (M1.5Iab)','≈550 anos-luz',24, 16.490, -26.432),
     star('Shaula','Shaula',0x9fc9ff,'~22.000 K','Subgigante azul (B1.5IV)','≈570 anos-luz',13, 17.560, -37.104),
-  ], lines:[['Antares','Shaula']] },
+    star('Dschubba','Dschubba',0x9fc9ff,'~27.400 K','Azul (B0.3IV)','≈444 anos-luz',10, 16.005, -22.622),
+    star('Graffias','Graffias (Acrab)',0xaad0ff,'~23.000 K','Azul (B1V, múltipla)','≈530 anos-luz',9, 16.090, -19.805),
+    star('Sargas','Sargas',0xfff2cc,'~6.294 K','Gigante amarela (F1II)','≈272 anos-luz',9, 17.622, -42.998),
+    star('Lesath','Lesath',0x9fc9ff,'~23.700 K','Azul (B2IV)','≈518 anos-luz',9, 17.512, -37.296),
+  ], lines:[['Graffias','Dschubba'],['Dschubba','Antares'],['Antares','Sargas'],['Sargas','Shaula'],['Shaula','Lesath']] },
   { name:'Sagitário', zodiac:true, stars:[
     star('KausAustralis','Kaus Australis',0xdfeaff,'~10.000 K','Gigante branca (B9.5III)','≈143 anos-luz',11, 18.403, -34.385),
     star('Nunki','Nunki',0x9fc9ff,'~18.890 K','Azul (B2.5V)','≈228 anos-luz',12, 18.921, -26.297),
-  ], lines:[['KausAustralis','Nunki']] },
+    star('KausMedia','Kaus Media',0xffc98a,'~4.300 K','Gigante laranja (K1.5III)','≈145 anos-luz',9, 18.351, -29.828),
+    star('KausBorealis','Kaus Borealis',0xffc98a,'~4.300 K','Gigante laranja (K1III)','≈78 anos-luz',9, 18.466, -25.421),
+    star('Ascella','Ascella',0xdfeaff,'~9.000 K','Branca (A2III, múltipla)','≈88 anos-luz',9, 19.045, -29.880),
+  ], lines:[['KausBorealis','KausMedia'],['KausMedia','KausAustralis'],['KausMedia','Nunki'],['Nunki','Ascella'],['Ascella','KausAustralis']] },
   { name:'Capricórnio', zodiac:true, stars:[
     star('DenebAlgedi','Deneb Algedi',0xdfeaff,'~7.301 K','Branca (A5m, gigante)','≈39 anos-luz',8, 21.784, -16.127),
     star('Dabih','Dabih',0xffc98a,'~4.700 K','Gigante laranja (K0II)','≈330 anos-luz',10, 20.350, -14.781),
-  ], lines:[['DenebAlgedi','Dabih']] },
+    star('Algedi','Algedi',0xfff2cc,'~5.300 K','Amarela (G3Ib, dupla)','≈690 anos-luz',9, 20.301, -12.545),
+    star('Nashira','Nashira',0xdfeaff,'~7.400 K','Branca (A2/A3V)','≈139 anos-luz',8, 21.667, -16.662),
+  ], lines:[['Algedi','Dabih'],['Dabih','DenebAlgedi'],['DenebAlgedi','Nashira'],['Nashira','Algedi']] },
   { name:'Aquário', zodiac:true, stars:[
     star('Sadalsuud','Sadalsuud',0xfff2cc,'~5.608 K','Supergigante amarela (G0Ib)','≈540 anos-luz',14, 21.526, -5.571),
     star('Sadalmelik','Sadalmelik',0xfff2cc,'~5.383 K','Supergigante amarela (G2Ib)','≈520 anos-luz',13, 22.096, -0.320),
-  ], lines:[['Sadalsuud','Sadalmelik']] },
+    star('Sadachbia','Sadachbia',0xdfeaff,'~9.600 K','Branca (A0V, múltipla)','≈158 anos-luz',7, 22.362, -1.393),
+    star('Skat','Skat',0xdfeaff,'~8.900 K','Branca (A3V)','≈160 anos-luz',8, 22.911, -15.821),
+  ], lines:[['Sadalsuud','Sadalmelik'],['Sadalmelik','Sadachbia'],['Sadachbia','Skat']] },
   { name:'Peixes', zodiac:true, stars:[
-    star('Alrescha','Alrescha',0xdfeaff,'~9.200 K','Branca (A0p, múltipla)','≈139 anos-luz',9, 2.034, 2.764),
+    star('Alrescha','Alrescha',0xdfeaff,'~9.200 K','Branca (A0p, múltipla — "o nó" que liga os dois peixes)','≈139 anos-luz',9, 2.034, 2.764),
     star('Fumalsamakah','Fumalsamakah',0x9fc9ff,'~13.000 K','Azul-branca (B6Ve)','≈492 anos-luz',8, 23.065, 3.821),
-  ], lines:[['Alrescha','Fumalsamakah']] },
+    star('Alpherg','Alpherg',0xfff2cc,'~4.900 K','Gigante amarela (G8III, a mais brilhante de Peixes)','≈294 anos-luz',9, 1.526, 15.346),
+  ], lines:[['Alrescha','Alpherg'],['Alrescha','Fumalsamakah']] },
 ];
 // ---------- FICÇÃO no céu profundo: estrela REAL hospedando planeta fictício (40 Eridani/Vulcan,
 // homenagem Star Trek — a estrela é catalogada de verdade, só o planeta é ficção), e um sistema
@@ -562,9 +640,24 @@ THEORETICAL_BODIES.forEach(b=>{
 // período/inclinação/proporção de distância reais — fase inicial é aproximada (não é uma
 // efeméride oficial minuto a minuto, ao contrário dos planetas/Lua da Terra via astronomy-engine).
 const MU_SUN = 0.00029591220828559104; // GM do Sol em UA³/dia² (constante gravitacional gaussiana ao quadrado)
-const OBLIQUITY_RAD = 23.4392911 * Math.PI/180; // obliquidade J2000: converte eclíptica -> equatorial, mesmo referencial que o astronomy-engine usa pros planetas
 const J2000_MS = Date.UTC(2000,0,1,12,0,0);
 function dateToJD(d){ return d.getTime()/86400000 + 2440587.5; }
+
+// GMST (Greenwich Mean Sidereal Time) — dá o ângulo real de "pra onde a Terra tá virada" num
+// instante qualquer, independente da posição orbital dela. É o jeito certo de sincronizar o giro
+// da textura com a hora real (a rotação "por velocidade" sozinha acerta a velocidade, mas não a
+// fase — ela sempre começava do mesmo jeito, por isso o lado dia/noite não batia com a hora certa).
+function greenwichSiderealAngleRad(date){
+  const jd = dateToJD(date);
+  const D = jd - 2451545.0;
+  const T = D/36525;
+  let gmstDeg = 280.46061837 + 360.98564736629*D + 0.000387933*T*T - (T*T*T)/38710000;
+  gmstDeg = ((gmstDeg % 360) + 360) % 360;
+  return gmstDeg * Math.PI/180;
+}
+// calibração fina: se a Terra abrir com o lado dia/noite girado (ex.: mostrando dia onde devia ser
+// noite), ajuste esse valor em graus — o resto do cálculo (GMST) já é astronomicamente correto.
+const EARTH_TEXTURE_OFFSET_DEG = 0;
 function solveKeplerEllipse(M, e){
   let E = e < 0.8 ? M : Math.PI;
   for (let i=0;i<50;i++){
@@ -629,11 +722,23 @@ const REAL_SMALL_BODIES = [
     e:0.2307000995648547, a:2.769559010737709, i:34.93279321851542, om:172.8866193357694, w:310.9699161652136, tpJD:2461695.031164382680,
     status:'Real — terceiro maior corpo do cinturão de asteroides, com órbita bem mais inclinada que a média da região. Elementos orbitais oficiais (JPL Small-Body Database).' },
 ];
+// textura real de rocha: mosaico global do asteroide Bennu (missão OSIRIS-REx, NASA/SVS, domínio
+// público) — não existe imagem de superfície de nenhum objeto interestelar (1I/2I/3I nunca foram
+// resolvidos por telescópio nenhum, nem de longe), então isso é analogia visual com um corpo rochoso
+// real de verdade fotografado, igual ao que o projeto já faz com as texturas de planeta-anão nos
+// corpos teóricos/fictícios (ver CREDITS.md). Cada corpo mantém sua cor própria como tingimento.
+const ASTEROID_ROCK_TEXTURE = TEX+'2k_bennu_asteroid_nasa.jpg';
+function rockyMesh(radius, tintColor){
+  const geo = new THREE.SphereGeometry(radius, 24, 24);
+  const map = texLoader.load(ASTEROID_ROCK_TEXTURE);
+  return new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color:tintColor, map, roughness:0.95, metalness:0.05 }));
+}
 const realSmallBodies = [];
-REAL_SMALL_BODIES.forEach(b=>{
+REAL_SMALL_BODIES.forEach((b,i)=>{
   const group = registerItemGroup('realExtra', b.name, new THREE.Group());
   solarGroup.add(group);
-  const mesh = lowPolyMesh(b.radius, b.color, 0);
+  const mesh = rockyMesh(b.radius, b.color);
+  mesh.rotation.y = i*1.37; // varia a orientação da textura entre os corpos, pra não ficar tudo idêntico
   group.add(mesh);
   const label = makeLabel(b.name);
   group.add(label);
@@ -661,12 +766,11 @@ const REAL_MOONS = [
 ];
 const realMoons = [];
 REAL_MOONS.forEach(m=>{
-  const group = registerItemGroup('realExtra', m.name, new THREE.Group());
-  solarGroup.add(group);
+  // sem toggle — são reais, ficam sempre visíveis por padrão, igual à Lua da Terra (André pediu 2026-07-09)
   const mesh = lowPolyMesh(m.radius, m.color, 0);
-  group.add(mesh);
+  solarGroup.add(mesh);
   const label = makeLabel(m.name);
-  group.add(label);
+  solarGroup.add(label);
   realMoons.push({ mesh, label, def:m });
 });
 
@@ -689,7 +793,7 @@ REAL_MOONS.forEach(m=>{
   geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   const mat = new THREE.PointsMaterial({ color:0xd9d0b8, size:0.035, transparent:true, opacity:0.55, sizeAttenuation:true });
   const points = new THREE.Points(geo, mat);
-  points.rotation.x = Math.PI/2 - 0.4; // mesma inclinação do anel de textura já existente
+  points.rotation.x = -0.4; // as partículas já nascem deitadas no plano XZ (não em pé como o RingGeometry), só falta o mesmo tilt extra do anel de textura (era +Math.PI/2 a mais, por isso saía 90° errado)
   const group = registerItemGroup('realExtra', 'Nuvem de detritos (Saturno)', new THREE.Group());
   group.add(points);
   objects['Saturn'].mesh.add(group);
@@ -707,6 +811,10 @@ function fictionGroupFor(universe){
   }
   return fictionUniverseGroups[universe];
 }
+// André pediu (2026-07-09): naves/estações grandes demais e rápidas demais — aplicado em cima
+// de todas elas (tamanho visual do grupo e periodSec, que controla a velocidade orbital).
+const SHIP_SIZE_SCALE = 0.5;  // metade do tamanho visual
+const SHIP_PERIOD_MULT = 4;   // período 4x maior = velocidade orbital 4x mais lenta
 const MOON_SHIPS = [
   { name:'"Nave-E"', universe:'Star Trek', color:0xd8d8d8, accent:0xffcf70, size:0.95, anchor:'Earth', orbitRadius:10, periodSec:14, tiltDeg:20,
     status:'Ficção (Star Trek) — homenagem própria, sem afiliação oficial com a franquia.' },
@@ -811,6 +919,8 @@ MOON_SHIPS.forEach(s=>{
   const label = makeLabel(s.name);
   label.position.set(0, s.size + 1.2, 0); // filho do group: offset local, sobrevive à rotação (fica no eixo Y)
   group.add(label);
+  group.scale.setScalar(SHIP_SIZE_SCALE);
+  s.periodSec *= SHIP_PERIOD_MULT;
   moonShips.push({ group, label, def:s });
 });
 // "Estação Estelar" (homenagem Star Trek) — núcleo + anel de docagem, orbitando a Terra.
@@ -836,6 +946,8 @@ MOON_SHIPS.forEach(s=>{
   const label = makeLabel(def.name);
   label.position.set(0, R + 1.45, 0);
   group.add(label);
+  group.scale.setScalar(SHIP_SIZE_SCALE);
+  def.periodSec *= SHIP_PERIOD_MULT;
   moonShips.push({ group, label, def });
 })();
 
@@ -843,8 +955,8 @@ MOON_SHIPS.forEach(s=>{
 // 100% procedural (módulo central + treliça + painéis solares), inclinação real de ~51,6°.
 // Vai direto em solarGroup (não em fictionGroupFor) pra ficar sempre visível, como a Lua.
 (function issStation(){
-  const R = 0.32;
-  const def = { name:'ISS (Estação Espacial Internacional)', universe:'real', size:R, anchor:'Earth', orbitRadius:2.55, periodSec:7, tiltDeg:51.6,
+  const R = 0.09; // André reportou (2026-07-09): tava quase do tamanho da Lua (era 0.32) — bem menor agora, ISS é minúscula perto de qualquer coisa
+  const def = { name:'ISS', universe:'real', size:R, anchor:'Earth', orbitRadius:2.55, periodSec:28, tiltDeg:51.6,
     status:'Real — Estação Espacial Internacional, órbita baixa da Terra (altitude real ~400 km; aqui ampliada visualmente pra ficar visível na escala do planeta).' };
   const group = new THREE.Group();
   const hull = metalMat(0xd6dbe0,0.4,0.6);
@@ -890,6 +1002,8 @@ MOON_SHIPS.forEach(s=>{
   const label = makeLabel(def.name);
   label.position.set(0, R + 1.2, 0);
   group.add(label);
+  group.scale.setScalar(SHIP_SIZE_SCALE);
+  def.periodSec *= SHIP_PERIOD_MULT;
   moonShips.push({ group, label, def });
 })();
 
@@ -920,6 +1034,8 @@ MOON_SHIPS.forEach(s=>{
   const label = makeLabel(def.name);
   label.position.set(0, R + 1.2, 0);
   group.add(label);
+  group.scale.setScalar(SHIP_SIZE_SCALE);
+  def.periodSec *= SHIP_PERIOD_MULT;
   moonShips.push({ group, label, def });
 })();
 
@@ -996,6 +1112,8 @@ function buildAlienVessel(def){
     const label = makeLabel(def.name);
     label.position.set(0, def.size + 1.25, 0);
     group.add(label);
+    group.scale.setScalar(SHIP_SIZE_SCALE);
+    def.periodSec *= SHIP_PERIOD_MULT;
     moonShips.push({ group, label, def });
   });
 })();
@@ -1114,26 +1232,28 @@ function updatePositions(date){
 
 // ---------- UI: relógio / velocidade ----------
 const clockTextEl = document.getElementById('clockText');
-document.querySelectorAll('.speedBtn').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    document.querySelectorAll('.speedBtn').forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active');
-    timeMultiplier = parseFloat(btn.dataset.mult);
-  });
-});
+const SPEED_OPTIONS = [
+  { label:'Tempo real', mult:1 },
+  { label:'1 dia/s', mult:86400 },
+  { label:'1 mês/s', mult:2592000 },
+  { label:'1 ano/s', mult:31536000 },
+];
 
-// cada botão de categoria abre um painel com um checkbox por item daquela camada
+// cada botão de categoria abre um painel; pra maioria é um checkbox por item da camada,
+// "tempo" é especial (velocidade + seletor de data), tratado à parte em renderLayerPanel.
 const LAYER_ITEMS = {
   zodiac: ZODIAC_CONSTELLATIONS.map(c=>c.name),
   theoretical: THEORETICAL_BODIES.map(b=>b.name),
   fiction: ['Star Trek','Star Wars','Lost in Space','Stargate','Original'],
   phenomena: [PHENOMENA_NAME],
-  realExtra: REAL_SMALL_BODIES.map(b=>b.name).concat(REAL_MOONS.map(m=>m.name)).concat(['Nuvem de detritos (Saturno)']),
+  realExtra: REAL_SMALL_BODIES.map(b=>b.name).concat(['Nuvem de detritos (Saturno)']),
 };
 const layerPanelEl = document.getElementById('layerPanel');
 let openLayer = null;
 
 function renderLayerPanel(layer){
+  if (layer === 'time'){ renderTimePanel(); return; }
+  if (layer === 'neos'){ renderNeoPanel(); return; }
   const items = LAYER_ITEMS[layer] || [];
   const rows = items.map(item=>{
     const checked = isItemVisible(layer, item) ? 'checked' : '';
@@ -1144,7 +1264,7 @@ function renderLayerPanel(layer){
       <span>${layer}</span>
       <span><button class="panelQuick" data-act="all">todos</button> · <button class="panelQuick" data-act="none">nenhum</button></span>
     </div>
-    ${rows}`;
+    <div class="panelItems">${rows}</div>`;
   layerPanelEl.querySelectorAll('input[type=checkbox]').forEach(cb=>{
     cb.addEventListener('change', ()=> setItemVisible(layer, cb.dataset.item, cb.checked));
   });
@@ -1155,6 +1275,84 @@ function renderLayerPanel(layer){
       renderLayerPanel(layer);
     });
   });
+}
+
+// painel "tempo": velocidade (linha horizontal de botões) + seletor de data (dia/mês/ano)
+function renderTimePanel(){
+  const speedBtns = SPEED_OPTIONS.map(o=>
+    `<button class="speedBtn${o.mult===timeMultiplier?' active':''}" data-mult="${o.mult}">${o.label}</button>`
+  ).join('');
+  const now = currentSimDate();
+  layerPanelEl.innerHTML = `
+    <div class="panelHead"><span>tempo</span></div>
+    <div class="panelSpeedRow">${speedBtns}</div>
+    <div class="panelDateRow">
+      <span>ir para:</span>
+      <input type="number" id="dateDay" min="1" max="31" value="${now.getDate()}" placeholder="dia">
+      <input type="number" id="dateMonth" min="1" max="12" value="${now.getMonth()+1}" placeholder="mês">
+      <input type="number" id="dateYear" min="1" max="9999" value="${now.getFullYear()}" placeholder="ano">
+      <button class="panelDateGo" id="dateGoBtn">ir</button>
+    </div>`;
+  layerPanelEl.querySelectorAll('.speedBtn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      timeMultiplier = parseFloat(btn.dataset.mult);
+      layerPanelEl.querySelectorAll('.speedBtn').forEach(b=>b.classList.toggle('active', b===btn));
+    });
+  });
+  layerPanelEl.querySelector('#dateGoBtn').addEventListener('click', ()=>{
+    const d = parseInt(layerPanelEl.querySelector('#dateDay').value, 10);
+    const mo = parseInt(layerPanelEl.querySelector('#dateMonth').value, 10);
+    const y = parseInt(layerPanelEl.querySelector('#dateYear').value, 10);
+    if (!d || !mo || !y) return;
+    const target = currentSimDate();
+    const newDate = new Date(y, mo-1, d, target.getHours(), target.getMinutes(), target.getSeconds());
+    realBaseDate = newDate;
+    simElapsedMs = 0;
+    updatePositions(currentSimDate());
+  });
+}
+
+// ---------- NEOs (NASA NeoWs via Supabase) ----------
+// A tabela `neo_feed` é alimentada por uma Edge Function separada (supabase/functions/sync-neo),
+// rodando fora do navegador — aqui só lemos com a chave publishable (segura no cliente, protegida
+// por RLS: só permite SELECT). Se a tabela ainda não foi sincronizada nenhuma vez, fica vazia.
+const SUPABASE_URL = 'https://nkzpwztuvrgcqvstqreg.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_KrCaqBMFrPE5M_LwNA7Hgw_YLWuw1xN';
+const supabaseClient = (typeof window.supabase !== 'undefined')
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY)
+  : null;
+
+async function renderNeoPanel(){
+  layerPanelEl.innerHTML = `<div class="panelHead"><span>neos (NASA)</span></div><div class="panelItems">carregando...</div>`;
+  if (!supabaseClient){
+    layerPanelEl.querySelector('.panelItems').textContent = 'Supabase não carregou (sem internet?).';
+    return;
+  }
+  const { data, error } = await supabaseClient
+    .from('neo_feed')
+    .select('*')
+    .order('close_approach_date', { ascending:true })
+    .limit(40);
+  if (openLayer !== 'neos') return; // usuário já fechou/trocou de painel enquanto a busca rodava
+  if (error){
+    layerPanelEl.querySelector('.panelItems').textContent = 'Erro ao buscar: ' + error.message;
+    return;
+  }
+  if (!data || !data.length){
+    layerPanelEl.querySelector('.panelItems').textContent =
+      'Nenhum dado ainda — a sincronização (Edge Function sync-neo) ainda não rodou. Ver supabase/README.md.';
+    return;
+  }
+  const rows = data.map(n=>{
+    const dist = n.miss_distance_km ? Math.round(n.miss_distance_km).toLocaleString('pt-BR') + ' km' : '—';
+    const diam = (n.estimated_diameter_min_m && n.estimated_diameter_max_m)
+      ? `${Math.round(n.estimated_diameter_min_m)}–${Math.round(n.estimated_diameter_max_m)} m` : '—';
+    return `<div class="neoItem${n.is_potentially_hazardous?' hazard':''}">
+      <span class="neoName">${n.is_potentially_hazardous?'⚠ ':''}${n.name}</span>
+      <span class="neoMeta">${n.close_approach_date||'—'} · ${dist} · ⌀${diam}</span>
+    </div>`;
+  }).join('');
+  layerPanelEl.innerHTML = `<div class="panelHead"><span>neos (NASA, via Supabase)</span></div><div class="panelItems">${rows}</div>`;
 }
 
 document.getElementById('labelsToggle').addEventListener('click', function(){
@@ -1192,6 +1390,11 @@ const moonRow = document.createElement('div');
 moonRow.className = 'bItem'; moonRow.textContent = 'Lua';
 moonRow.addEventListener('click', ()=> focusOn('Moon'));
 bodyListEl.appendChild(moonRow);
+
+document.getElementById('solarCatBtn').addEventListener('click', function(){
+  bodyListEl.classList.toggle('open');
+  this.classList.toggle('open', bodyListEl.classList.contains('open'));
+});
 
 // ---------- INFO PANEL ----------
 const infoPanelEl = document.getElementById('infoPanel');

@@ -5,3 +5,7 @@ PROGRESSO.md
 index copy.html
 starveu-remodelado.html
 backup/starveu-remodelado1.html
+.env
+.env.local
+supabase/.temp
+supabase/.branches

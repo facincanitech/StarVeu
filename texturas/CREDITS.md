@@ -34,6 +34,17 @@ https://commons.wikimedia.org/wiki/Category:Solar_System_Scope (mesma licença C
 | `2k_makemake_fictional.jpg` | Makemake (planeta-anão) — reaproveitada | **Vulcan** (camada ficção, homenagem Star Trek, orbitando a estrela real 40 Eridani) — visual avermelhado |
 | `2k_stars.jpg` | — | **não usado** — mantido caso troque o céu por uma esfera separada de estrelas |
 | `2k_stars_milky_way.jpg` | — | glow difuso e escurecido de fundo (não é mais nítido — ver observações) |
+| `2k_bennu_asteroid_nasa.jpg` | Asteroide Bennu (real, fotografado) | Objetos interestelares (1I/2I/3I) + maiores asteroides do cinturão (Ceres/Vesta/Palas) na camada "Corpos menores" |
+
+`2k_bennu_asteroid_nasa.jpg` é diferente do resto do pacote: vem do mosaico global do asteroide
+**101955 Bennu**, fotografado de verdade pela sonda **OSIRIS-REx** (NASA), via
+[NASA Scientific Visualization Studio](https://svs.gsfc.nasa.gov/5069) — conteúdo produzido pelo
+governo dos EUA, domínio público (sem licença CC, nem precisa). Não existe imagem de superfície de
+nenhum objeto interestelar (1I/'Oumuamua, 2I/Borisov, 3I/ATLAS nunca foram resolvidos por telescópio
+nenhum, são pontos de luz mesmo nos maiores observatórios) nem dos asteroides do cinturão além de
+Ceres/Vesta (que o Dawn fotografou, mas não estão nesse pacote) — por isso é usada como analogia
+visual de "corpo rochoso real", mesma lógica já usada pras texturas de planeta-anão reaproveitadas
+acima, só que essa é uma foto de verdade em vez de arte procedural.
 
 Observações:
 - O pacote da Solar System Scope **não inclui Plutão** nem luas além da nossa (Titã, Europa, Fobos etc. não existem nesse pacote — só nas fontes alternativas que o Artur mencionou, tipo o *Planet Texture Maps Wiki*, que tem licenças variadas e precisa checar arquivo por arquivo).
