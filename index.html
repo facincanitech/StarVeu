@@ -100,10 +100,24 @@
     position:absolute;top:10px;right:12px;background:none;border:none;color:#cfe8ff;
     font-family:monospace;font-size:15px;cursor:pointer;padding:2px 6px;
   }
-  #caseDetailGallery{display:flex;gap:6px;overflow-x:auto;margin-top:4px;}
-  #caseDetailGallery img{height:130px;border-radius:6px;flex:0 0 auto;}
+  #caseDetailGallery{
+    position:relative;margin-top:4px;border-radius:8px;overflow:hidden;
+    background:rgba(255,255,255,0.03);
+  }
+  #caseDetailGallery img{width:100%;height:220px;object-fit:cover;display:block;}
   #caseDetailGallery .caseNoImg{
-    font-size:10px;opacity:0.55;padding:14px 0;font-style:italic;
+    font-size:10px;opacity:0.55;padding:40px 0;font-style:italic;text-align:center;
+  }
+  #caseDetailGallery .galNav{
+    position:absolute;top:50%;transform:translateY(-50%);background:rgba(6,10,18,0.6);
+    color:#fff;border:none;border-radius:50%;width:28px;height:28px;cursor:pointer;
+    font-family:monospace;font-size:14px;line-height:1;
+  }
+  #caseDetailGallery .galNav.prev{left:6px;}
+  #caseDetailGallery .galNav.next{right:6px;}
+  #caseDetailGallery .galCount{
+    position:absolute;bottom:6px;right:8px;font-size:9px;background:rgba(6,10,18,0.65);
+    color:#dfe8f5;padding:2px 6px;border-radius:8px;
   }
   #loading{
     position:fixed;inset:0;background:#000;color:#cfe8ff;display:flex;
@@ -134,7 +148,7 @@
 <body>
 
 <div id="loading">calculando posições reais...</div>
-<div id="versionBadge">StarVeu — build 2026-07-10</div>
+<div id="versionBadge">StarVeu — build 2026-07-10b</div>
 
 <div id="hud">
   <div class="clock" id="clockText">—</div>
@@ -144,7 +158,6 @@
     <button class="layerCatBtn" data-layer="theoretical">🧪 Teórico</button>
     <button class="layerCatBtn" data-layer="fiction">🖖 Ficção</button>
     <button class="layerCatBtn" data-layer="phenomena">👁 Fenômenos</button>
-    <button class="layerCatBtn" data-layer="sightings">🛸 Avistamentos</button>
     <button class="layerCatBtn" data-layer="realExtra">☄️ Corpos menores</button>
     <button class="layerCatBtn" data-layer="neos">🛰 NEOs</button>
     <button id="labelsToggle" class="layerCatBtn open">🏷 Nomes</button>
@@ -1202,44 +1215,19 @@ function showBodyInfo(def){
   infoPanelEl.style.display = 'block';
 }
 
-// ---------- CAMADA "AVISTAMENTOS": casos documentados publicamente, com local real marcado na
-// superfície viva da Terra (o marcador acompanha órbita E rotação real do planeta — não é um
-// filho fixo do mesh porque a rotação da Terra já é recalculada via GMST em updatePositions,
-// então recalculamos a posição do marcador do zero a cada tick, igual à Lua). Textos neutros,
-// sem afirmar nada como confirmado — mesmo cuidado do marcador genérico antigo de "Fenômenos".
-// Pra adicionar um caso novo: só empurrar { key, name, location, lat, lon, year, summary, source }
-// no array SIGHTING_CASES.
-function latLonToLocalOffset(lat, lon, radius){
-  const latRad = lat*Math.PI/180, lonRad = lon*Math.PI/180;
-  return {
-    x: radius*Math.cos(latRad)*Math.cos(lonRad),
-    y: radius*Math.sin(latRad),
-    z: -radius*Math.cos(latRad)*Math.sin(lonRad),
-  };
-}
-// campo `images`: caminhos pra fotos do caso (aparecem na galeria do painel de detalhe dentro
-// do modo chão) — vazio por enquanto, André vai mandando aos poucos, mesmo esquema do panorama.
+// ---------- "AVISTAMENTOS": casos documentados publicamente — só acessíveis por dentro, no
+// modo chão (não tem marcador na superfície nem vista de fora; André preferiu simplificar assim).
+// Textos neutros, sem afirmar nada como confirmado. Pra adicionar um caso novo: só empurrar
+// { key, name, location, year, summary, source, images } no array SIGHTING_CASES — `images` são
+// caminhos de foto pro álbum do painel de detalhe, vazio até André mandar.
 const SIGHTING_CASES = [
-  { key:'roswell', name:'Roswell (1947)', location:'Roswell, Novo México, EUA', lat:33.89, lon:-104.53, year:1947,
+  { key:'roswell', name:'Roswell (1947)', location:'Roswell, Novo México, EUA', year:1947,
     summary:'Em julho de 1947, destroços encontrados num rancho perto de Roswell viraram manchete de jornal local como "disco voador capturado" — no dia seguinte a força aérea dos EUA corrigiu a versão pra "balão meteorológico". Décadas depois, documentos desclassificados apontam que era parte do Projeto Mogul (balões de vigilância de testes nucleares soviéticos, secreto na época) — não uma nave. Ainda assim, virou o caso mais famoso da cultura ufológica.',
     source:'Relatórios da USAF sobre Roswell (1994/1997, desclassificados). Local aproximado (região do Foster Ranch) — a coordenada exata é disputada entre relatos.', images:[] },
-  { key:'varginha', name:'Caso Varginha (1996)', location:'Varginha, Minas Gerais, Brasil', lat:-21.5544, lon:-45.4308, year:1996,
+  { key:'varginha', name:'Caso Varginha (1996)', location:'Varginha, Minas Gerais, Brasil', year:1996,
     summary:'Em janeiro de 1996, moradores de Varginha relataram ter visto uma criatura estranha nas ruas da cidade, com relatos não confirmados oficialmente de envolvimento do Corpo de Bombeiros e do Exército num resgate. Nenhum documento oficial brasileiro confirma a versão "extraterrestre"; a hipótese mais citada por céticos é confusão com um morador com deficiência física. Ficou conhecido como o caso brasileiro mais famoso internacionalmente.',
     source:'Cobertura jornalística da época e retrospectivas (ex. G1, Folha de S.Paulo). Sem documento oficial confirmando ser/nave extraterrestre.', images:[] },
 ];
-const sightingMarkers = [];
-const sightingGroup = registerItemGroup('sightings', 'Avistamentos', new THREE.Group());
-solarGroup.add(sightingGroup);
-SIGHTING_CASES.forEach(c=>{
-  const group = new THREE.Group();
-  addPart(group, new THREE.SphereGeometry(0.05,10,8), glowMat(0xffe27a,0.9));
-  addPart(group, new THREE.RingGeometry(0.09,0.12,24), glowMat(0xffe27a,0.5), [0,0,0], [Math.PI/2,0,0]);
-  sightingGroup.add(group);
-  const label = makeLabel(c.name);
-  label.position.set(0, 0.35, 0);
-  group.add(label);
-  sightingMarkers.push({ group, label, def:c });
-});
 
 // ---------- CÁLCULO ASTRONÔMICO REAL ----------
 let realBaseDate = new Date();
@@ -1304,22 +1292,6 @@ function updatePositions(date){
     m.label.position.set(m.mesh.position.x, m.mesh.position.y + m.def.radius + 1, m.mesh.position.z);
   });
 
-  // marcadores de avistamentos: presos na superfície viva da Terra (posição orbital + rotação
-  // real via GMST, recalculado do zero a cada tick — mesma lógica de latitude/longitude de
-  // sempre, só que "andando" com o planeta em vez de fixo)
-  const earthObj = objects['Earth'];
-  if (earthObj){
-    const earthPos = earthObj.mesh.position, earthRot = earthObj.mesh.rotation.y;
-    const cosR = Math.cos(earthRot), sinR = Math.sin(earthRot);
-    sightingMarkers.forEach(s=>{
-      const local = latLonToLocalOffset(s.def.lat, s.def.lon, earthObj.def.radius*1.02);
-      const wx = local.x*cosR + local.z*sinR;
-      const wz = -local.x*sinR + local.z*cosR;
-      s.group.position.set(earthPos.x+wx, earthPos.y+local.y, earthPos.z+wz);
-      s.group.lookAt(earthPos.x+wx*1.3, earthPos.y+local.y*1.3, earthPos.z+wz*1.3); // "de pé" apontando pra fora, não deitado na superfície
-    });
-  }
-
   clockTextEl.textContent = date.toLocaleString('pt-BR', { dateStyle:'medium', timeStyle:'medium' });
 }
 
@@ -1347,7 +1319,6 @@ let openLayer = null;
 function renderLayerPanel(layer){
   if (layer === 'time'){ renderTimePanel(); return; }
   if (layer === 'neos'){ renderNeoPanel(); return; }
-  if (layer === 'sightings'){ renderSightingsPanel(); return; }
   const items = LAYER_ITEMS[layer] || [];
   const rows = items.map(item=>{
     const checked = isItemVisible(layer, item) ? 'checked' : '';
@@ -1449,37 +1420,6 @@ async function renderNeoPanel(){
   layerPanelEl.innerHTML = `<div class="panelHead"><span>neos (NASA, via Supabase)</span></div><div class="panelItems">${rows}</div>`;
 }
 
-// painel "avistamentos": lista de casos — clicar voa a câmera até o marcador na Terra e mostra
-// o resumo no infoPanel. Checkbox "todos/nenhum" liga/desliga a camada inteira (mesma lógica das outras).
-function renderSightingsPanel(){
-  const checked = isItemVisible('sightings', 'Avistamentos') ? 'checked' : '';
-  const rows = sightingMarkers.map(s=>
-    `<div class="neoItem" data-key="${s.def.key}"><span class="neoName">🛸 ${s.def.name}</span><span class="neoMeta">${s.def.location}</span></div>`
-  ).join('');
-  layerPanelEl.innerHTML = `
-    <div class="panelHead">
-      <span>avistamentos</span>
-      <label style="font-size:10px;"><input type="checkbox" id="sightingsVisible" ${checked}> mostrar na cena</label>
-    </div>
-    <div class="panelSpeedRow"><button class="speedBtn" id="enterGlobeBtn">🌍 Ver globo</button></div>
-    <div class="panelItems">${rows}</div>`;
-  layerPanelEl.querySelector('#sightingsVisible').addEventListener('change', e=>{
-    setItemVisible('sightings', 'Avistamentos', e.target.checked);
-  });
-  layerPanelEl.querySelector('#enterGlobeBtn').addEventListener('click', ()=>{
-    const first = sightingMarkers[0];
-    const dir = first ? first.group.position.clone().sub(objects['Earth'].mesh.position).normalize() : null;
-    enterEarthMap(dir);
-    infoPanelEl.style.display = 'none';
-  });
-  layerPanelEl.querySelectorAll('.neoItem[data-key]').forEach(el=>{
-    el.addEventListener('click', ()=>{
-      const s = sightingMarkers.find(m=>m.def.key === el.dataset.key);
-      if (s) focusOnCase(s.group, s.def);
-    });
-  });
-}
-
 document.getElementById('labelsToggle').addEventListener('click', function(){
   labelsVisible = !labelsVisible;
   allLabels.forEach(l => l.visible = labelsVisible);
@@ -1525,12 +1465,12 @@ function renderSolarBodyList(){
 }
 function renderGroundBodyList(){
   bodyListEl.innerHTML = '';
-  sightingMarkers.forEach(s=>{
+  SIGHTING_CASES.forEach(c=>{
     const d = document.createElement('div');
     d.className = 'bItem';
-    d.textContent = `🛸 ${s.def.name}`;
-    d.title = s.def.location;
-    d.addEventListener('click', ()=> showCaseDetail(s.def));
+    d.textContent = `🛸 ${c.name}`;
+    d.title = c.location;
+    d.addEventListener('click', ()=> showCaseDetail(c));
     bodyListEl.appendChild(d);
   });
 }
@@ -1542,13 +1482,30 @@ const caseDetailNameEl = document.getElementById('caseDetailName');
 const caseDetailGalleryEl = document.getElementById('caseDetailGallery');
 const caseDetailTextEl = document.getElementById('caseDetailText');
 const caseDetailSourceEl = document.getElementById('caseDetailSource');
+let caseImgIndex = 0;
+let caseImgList = [];
+function renderCaseGallery(){
+  if (!caseImgList.length){
+    caseDetailGalleryEl.innerHTML = '<div class="caseNoImg">Sem fotos deste caso ainda</div>';
+    return;
+  }
+  caseImgIndex = ((caseImgIndex % caseImgList.length) + caseImgList.length) % caseImgList.length;
+  const navHtml = caseImgList.length > 1
+    ? `<button class="galNav prev">‹</button><button class="galNav next">›</button><span class="galCount">${caseImgIndex+1}/${caseImgList.length}</span>`
+    : '';
+  caseDetailGalleryEl.innerHTML = `<img src="${caseImgList[caseImgIndex]}" alt="">${navHtml}`;
+  const prevBtn = caseDetailGalleryEl.querySelector('.prev');
+  const nextBtn = caseDetailGalleryEl.querySelector('.next');
+  if (prevBtn) prevBtn.addEventListener('click', ()=>{ caseImgIndex--; renderCaseGallery(); });
+  if (nextBtn) nextBtn.addEventListener('click', ()=>{ caseImgIndex++; renderCaseGallery(); });
+}
 function showCaseDetail(def){
   caseDetailNameEl.textContent = `${def.name} — ${def.location}`;
   caseDetailTextEl.textContent = def.summary;
   caseDetailSourceEl.textContent = 'Fonte: ' + def.source;
-  caseDetailGalleryEl.innerHTML = (def.images && def.images.length)
-    ? def.images.map(src=>`<img src="${src}" alt="${def.name}">`).join('')
-    : '<div class="caseNoImg">Sem fotos deste caso ainda</div>';
+  caseImgList = def.images || [];
+  caseImgIndex = 0;
+  renderCaseGallery();
   caseDetailPanelEl.style.display = 'block';
 }
 document.getElementById('caseDetailClose').addEventListener('click', ()=>{
@@ -1573,7 +1530,7 @@ const infoPeriodEl = document.getElementById('infoPeriod');
 const infoDiamEl = document.getElementById('infoDiam');
 
 function showInfo(key){
-  enterPlanetBtnEl.style.display = (key === 'Earth' && !groundMode && !earthMapMode) ? 'block' : 'none';
+  enterPlanetBtnEl.style.display = (key === 'Earth' && !groundMode) ? 'block' : 'none';
   if (key === 'Moon'){
     infoNameEl.textContent = 'Lua';
     infoDistEl.textContent = 'Distância média da Terra: ~384.400 km';
@@ -1750,8 +1707,7 @@ function warpToSolarSystem(){
   warpEffect('#7fbfff', exitStarSystem);
 }
 backBtnEl.addEventListener('click', ()=>{
-  if (backBtnMode === 'earthMap') exitEarthMap();
-  else if (backBtnMode === 'ground') exitGroundMode();
+  if (backBtnMode === 'ground') exitGroundMode();
   else warpToSolarSystem();
 });
 
@@ -1771,21 +1727,12 @@ function focusOn(key){
   flying = true;
 }
 
-// clicar num caso de avistamento: entra no "modo globo" (órbita perto da superfície da Terra,
-// tipo Maps/Google Earth, só habilitado pra essa finalidade) já mirando naquele marcador
-function focusOnCase(marker, def){
-  const earthPos = objects['Earth'].mesh.position;
-  const dir = marker.position.clone().sub(earthPos).normalize();
-  enterEarthMap(dir);
-  showBodyInfo({ name: `${def.name} — ${def.location}`, status: `${def.summary} Fonte: ${def.source}` });
-}
-
 // ---------- CÂMERA LIVRE (fly-cam) ----------
 let yaw = -Math.PI/2, pitch = -0.35;
 const moveState = { fwd:false, back:false, left:false, right:false, up:false, down:false };
 let dragging = false, lastX=0, lastY=0;
 let flying = false, flyTarget=null, flyStartPos=null, flyStartQuat=null, flyProgress=0;
-let flyOffset = new THREE.Vector3(0, 8, 22); // padrão (planetas); focusOnCase() troca por um offset bem mais próximo
+let flyOffset = new THREE.Vector3(0, 8, 22); // offset da câmera em relação ao alvo, usado no voo até focusOn()
 
 function applyLook(){
   const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(pitch, yaw, 0, 'YXZ'));
@@ -1795,34 +1742,7 @@ applyLook();
 
 function forwardVec(){ return new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion); }
 
-// ---------- "MODO GLOBO": órbita perto da superfície da Terra, tipo Maps/Google Earth ----------
-// Só existe pra explorar a camada de Avistamentos — arrastar gira ao redor do planeta (não olha
-// livre feito o fly-cam normal), scroll/pinça aproxima/afasta dentro de uma faixa pertinho da
-// superfície. A câmera sempre olha pro centro da Terra, reposicionada em coordenadas esféricas
-// ao redor da posição AO VIVO do planeta (que continua orbitando/girando de verdade por baixo).
-let earthMapMode = false;
-let mapYaw = 0, mapPitch = 0.4, mapDist = 4;
-let backBtnMode = 'starSystem'; // o que o botão "voltar" faz depende do modo atual
-function enterEarthMap(initialDir){
-  flying = false;
-  earthMapMode = true;
-  const r = objects['Earth'].def.radius;
-  if (initialDir){
-    mapPitch = Math.asin(Math.max(-1, Math.min(1, initialDir.y)));
-    mapYaw = Math.atan2(initialDir.z, initialDir.x);
-  }
-  mapDist = r * 1.8;
-  backBtnMode = 'earthMap';
-  backBtnEl.textContent = '← Sair do globo';
-  backBtnEl.style.display = 'block';
-}
-function exitEarthMap(){
-  earthMapMode = false;
-  backBtnMode = 'starSystem';
-  backBtnEl.textContent = '← Voltar ao Sistema Solar';
-  backBtnEl.style.display = 'none';
-  infoPanelEl.style.display = 'none';
-}
+let backBtnMode = 'starSystem'; // o que o botão "voltar" faz depende do modo atual ('starSystem' ou 'ground')
 
 // ---------- "MODO CHÃO": cena separada, tipo tela inicial do Stellarium — pousa numa planície
 // genérica (não é nenhum lugar real, é só o "saguão" visual), olha em volta livremente, e o painel
@@ -1847,7 +1767,7 @@ scene.add(groundGroup);
 
 const enterPlanetBtnEl = document.getElementById('enterPlanetBtn');
 function enterGroundMode(){
-  flying = false; earthMapMode = false;
+  flying = false;
   groundMode = true;
   solarGroup.visible = false; skyGroup.visible = false; sunLight.visible = false;
   groundGroup.visible = true;
@@ -1903,14 +1823,6 @@ function pickAt(x,y){
     }
 
     // camadas teórico/ficção/fenômenos (Vulcano hipotético, Nibiru, naves da Lua, marcador de fenômeno)
-    if (sightingGroup.visible){
-      const sightingObjects = sightingMarkers.map(s=>s.group);
-      const sightingHit = raycaster.intersectObjects(sightingObjects, true)[0];
-      if (sightingHit){
-        const found = sightingMarkers.find(s => s.group === sightingHit.object || sightingHit.object.parent === s.group);
-        if (found){ focusOnCase(found.group, found.def); return; }
-      }
-    }
 
     const extra = theoreticalMeshes
       .concat(moonShips.map(o=>({ mesh:o.group, def:o.def })))
@@ -1954,22 +1866,13 @@ window.addEventListener('mousemove', e=>{
   if (!dragging) return;
   const dx=e.clientX-lastX, dy=e.clientY-lastY;
   if (Math.abs(e.clientX-mouseDownX)+Math.abs(e.clientY-mouseDownY) > 5) mouseMoved=true;
-  if (earthMapMode){
-    mapYaw -= dx*0.004; mapPitch += dy*0.004;
-    mapPitch = Math.max(-1.4, Math.min(1.4, mapPitch));
-  } else {
-    yaw -= dx*0.0028; pitch -= dy*0.0028;
-    pitch = Math.max(-1.5, Math.min(1.5, pitch));
-    applyLook();
-  }
+  yaw -= dx*0.0028; pitch -= dy*0.0028;
+  pitch = Math.max(-1.5, Math.min(1.5, pitch));
+  applyLook();
   lastX=e.clientX; lastY=e.clientY;
 });
 window.addEventListener('wheel', e=>{
-  if (earthMapMode){
-    const r = objects['Earth'].def.radius;
-    mapDist = Math.max(r*1.05, Math.min(r*4, mapDist + e.deltaY*0.01));
-    return;
-  }
+  if (groundMode) return; // dentro da Terra só olha em volta, não "anda" (sem dolly de scroll)
   flying=false;
   const dist = e.deltaY*0.4;
   camera.position.addScaledVector(forwardVec(), -dist);
@@ -2003,24 +1906,14 @@ dom.addEventListener('touchmove', e=>{
   if (touchMode==='look' && e.touches.length===1){
     const dx=e.touches[0].clientX-lastX, dy=e.touches[0].clientY-lastY;
     if (Math.abs(e.touches[0].clientX-touchStartX)+Math.abs(e.touches[0].clientY-touchStartY) > 8) touchMoved=true;
-    if (earthMapMode){
-      mapYaw -= dx*0.0045; mapPitch += dy*0.0045;
-      mapPitch = Math.max(-1.4, Math.min(1.4, mapPitch));
-    } else {
-      yaw -= dx*0.0032; pitch -= dy*0.0032;
-      pitch = Math.max(-1.5, Math.min(1.5, pitch));
-      applyLook();
-    }
+    yaw -= dx*0.0032; pitch -= dy*0.0032;
+    pitch = Math.max(-1.5, Math.min(1.5, pitch));
+    applyLook();
     lastX=e.touches[0].clientX; lastY=e.touches[0].clientY;
-  } else if (touchMode==='pinch' && e.touches.length===2){
+  } else if (touchMode==='pinch' && e.touches.length===2 && !groundMode){
     const d = Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY);
     const delta = d - touchStartDist;
-    if (earthMapMode){
-      const r = objects['Earth'].def.radius;
-      mapDist = Math.max(r*1.05, Math.min(r*4, mapDist - delta*0.015));
-    } else {
-      camera.position.addScaledVector(forwardVec(), delta*0.6);
-    }
+    camera.position.addScaledVector(forwardVec(), delta*0.6);
     touchStartDist = d;
   }
 }, { passive:true });
@@ -2113,15 +2006,7 @@ function animate(){
     ship.group.rotation.y = starSystemElapsed*0.35 + ship.phase;
     ship.group.rotation.z = 0.18*Math.sin(starSystemElapsed + ship.phase);
   });
-  if (earthMapMode){
-    const earthPos = objects['Earth'].mesh.position;
-    const cy = Math.cos(mapPitch), sy = Math.sin(mapPitch);
-    const cx = Math.cos(mapYaw), sx = Math.sin(mapYaw);
-    const offset = new THREE.Vector3(cy*cx, sy, cy*sx).multiplyScalar(mapDist);
-    camera.position.copy(earthPos).add(offset);
-    const m = new THREE.Matrix4().lookAt(camera.position, earthPos, new THREE.Vector3(0,1,0));
-    camera.quaternion.setFromRotationMatrix(m);
-  } else if (flying && flyTarget){
+  if (flying && flyTarget){
     flyProgress = Math.min(1, flyProgress + dt*0.7);
     const ease = flyProgress*flyProgress*(3-2*flyProgress);
     const targetPos = flyTarget.position.clone();
