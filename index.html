@@ -108,7 +108,7 @@
 <body>
 
 <div id="loading">calculando posições reais...</div>
-<div id="versionBadge">StarVeu — build 2026-07-09</div>
+<div id="versionBadge">StarVeu — build 2026-07-09b</div>
 
 <div id="hud">
   <div class="clock" id="clockText">—</div>
@@ -118,6 +118,7 @@
     <button class="layerCatBtn" data-layer="theoretical">🧪 Teórico</button>
     <button class="layerCatBtn" data-layer="fiction">🖖 Ficção</button>
     <button class="layerCatBtn" data-layer="phenomena">👁 Fenômenos</button>
+    <button class="layerCatBtn" data-layer="sightings">🛸 Avistamentos</button>
     <button class="layerCatBtn" data-layer="realExtra">☄️ Corpos menores</button>
     <button class="layerCatBtn" data-layer="neos">🛰 NEOs</button>
     <button id="labelsToggle" class="layerCatBtn open">🏷 Nomes</button>
@@ -1164,6 +1165,43 @@ function showBodyInfo(def){
   infoPanelEl.style.display = 'block';
 }
 
+// ---------- CAMADA "AVISTAMENTOS": casos documentados publicamente, com local real marcado na
+// superfície viva da Terra (o marcador acompanha órbita E rotação real do planeta — não é um
+// filho fixo do mesh porque a rotação da Terra já é recalculada via GMST em updatePositions,
+// então recalculamos a posição do marcador do zero a cada tick, igual à Lua). Textos neutros,
+// sem afirmar nada como confirmado — mesmo cuidado do marcador genérico antigo de "Fenômenos".
+// Pra adicionar um caso novo: só empurrar { key, name, location, lat, lon, year, summary, source }
+// no array SIGHTING_CASES.
+function latLonToLocalOffset(lat, lon, radius){
+  const latRad = lat*Math.PI/180, lonRad = lon*Math.PI/180;
+  return {
+    x: radius*Math.cos(latRad)*Math.cos(lonRad),
+    y: radius*Math.sin(latRad),
+    z: -radius*Math.cos(latRad)*Math.sin(lonRad),
+  };
+}
+const SIGHTING_CASES = [
+  { key:'roswell', name:'Roswell (1947)', location:'Roswell, Novo México, EUA', lat:33.89, lon:-104.53, year:1947,
+    summary:'Em julho de 1947, destroços encontrados num rancho perto de Roswell viraram manchete de jornal local como "disco voador capturado" — no dia seguinte a força aérea dos EUA corrigiu a versão pra "balão meteorológico". Décadas depois, documentos desclassificados apontam que era parte do Projeto Mogul (balões de vigilância de testes nucleares soviéticos, secreto na época) — não uma nave. Ainda assim, virou o caso mais famoso da cultura ufológica.',
+    source:'Relatórios da USAF sobre Roswell (1994/1997, desclassificados). Local aproximado (região do Foster Ranch) — a coordenada exata é disputada entre relatos.' },
+  { key:'varginha', name:'Caso Varginha (1996)', location:'Varginha, Minas Gerais, Brasil', lat:-21.5544, lon:-45.4308, year:1996,
+    summary:'Em janeiro de 1996, moradores de Varginha relataram ter visto uma criatura estranha nas ruas da cidade, com relatos não confirmados oficialmente de envolvimento do Corpo de Bombeiros e do Exército num resgate. Nenhum documento oficial brasileiro confirma a versão "extraterrestre"; a hipótese mais citada por céticos é confusão com um morador com deficiência física. Ficou conhecido como o caso brasileiro mais famoso internacionalmente.',
+    source:'Cobertura jornalística da época e retrospectivas (ex. G1, Folha de S.Paulo). Sem documento oficial confirmando ser/nave extraterrestre.' },
+];
+const sightingMarkers = [];
+const sightingGroup = registerItemGroup('sightings', 'Avistamentos', new THREE.Group());
+solarGroup.add(sightingGroup);
+SIGHTING_CASES.forEach(c=>{
+  const group = new THREE.Group();
+  addPart(group, new THREE.SphereGeometry(0.05,10,8), glowMat(0xffe27a,0.9));
+  addPart(group, new THREE.RingGeometry(0.09,0.12,24), glowMat(0xffe27a,0.5), [0,0,0], [Math.PI/2,0,0]);
+  sightingGroup.add(group);
+  const label = makeLabel(c.name);
+  label.position.set(0, 0.35, 0);
+  group.add(label);
+  sightingMarkers.push({ group, label, def:c });
+});
+
 // ---------- CÁLCULO ASTRONÔMICO REAL ----------
 let realBaseDate = new Date();
 let simElapsedMs = 0;   // tempo simulado acumulado desde que a página abriu
@@ -1227,6 +1265,22 @@ function updatePositions(date){
     m.label.position.set(m.mesh.position.x, m.mesh.position.y + m.def.radius + 1, m.mesh.position.z);
   });
 
+  // marcadores de avistamentos: presos na superfície viva da Terra (posição orbital + rotação
+  // real via GMST, recalculado do zero a cada tick — mesma lógica de latitude/longitude de
+  // sempre, só que "andando" com o planeta em vez de fixo)
+  const earthObj = objects['Earth'];
+  if (earthObj){
+    const earthPos = earthObj.mesh.position, earthRot = earthObj.mesh.rotation.y;
+    const cosR = Math.cos(earthRot), sinR = Math.sin(earthRot);
+    sightingMarkers.forEach(s=>{
+      const local = latLonToLocalOffset(s.def.lat, s.def.lon, earthObj.def.radius*1.02);
+      const wx = local.x*cosR + local.z*sinR;
+      const wz = -local.x*sinR + local.z*cosR;
+      s.group.position.set(earthPos.x+wx, earthPos.y+local.y, earthPos.z+wz);
+      s.group.lookAt(earthPos.x+wx*1.3, earthPos.y+local.y*1.3, earthPos.z+wz*1.3); // "de pé" apontando pra fora, não deitado na superfície
+    });
+  }
+
   clockTextEl.textContent = date.toLocaleString('pt-BR', { dateStyle:'medium', timeStyle:'medium' });
 }
 
@@ -1254,6 +1308,7 @@ let openLayer = null;
 function renderLayerPanel(layer){
   if (layer === 'time'){ renderTimePanel(); return; }
   if (layer === 'neos'){ renderNeoPanel(); return; }
+  if (layer === 'sightings'){ renderSightingsPanel(); return; }
   const items = LAYER_ITEMS[layer] || [];
   const rows = items.map(item=>{
     const checked = isItemVisible(layer, item) ? 'checked' : '';
@@ -1353,6 +1408,30 @@ async function renderNeoPanel(){
     </div>`;
   }).join('');
   layerPanelEl.innerHTML = `<div class="panelHead"><span>neos (NASA, via Supabase)</span></div><div class="panelItems">${rows}</div>`;
+}
+
+// painel "avistamentos": lista de casos — clicar voa a câmera até o marcador na Terra e mostra
+// o resumo no infoPanel. Checkbox "todos/nenhum" liga/desliga a camada inteira (mesma lógica das outras).
+function renderSightingsPanel(){
+  const checked = isItemVisible('sightings', 'Avistamentos') ? 'checked' : '';
+  const rows = sightingMarkers.map(s=>
+    `<div class="neoItem" data-key="${s.def.key}"><span class="neoName">🛸 ${s.def.name}</span><span class="neoMeta">${s.def.location}</span></div>`
+  ).join('');
+  layerPanelEl.innerHTML = `
+    <div class="panelHead">
+      <span>avistamentos</span>
+      <label style="font-size:10px;"><input type="checkbox" id="sightingsVisible" ${checked}> mostrar na cena</label>
+    </div>
+    <div class="panelItems">${rows}</div>`;
+  layerPanelEl.querySelector('#sightingsVisible').addEventListener('change', e=>{
+    setItemVisible('sightings', 'Avistamentos', e.target.checked);
+  });
+  layerPanelEl.querySelectorAll('.neoItem[data-key]').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const s = sightingMarkers.find(m=>m.def.key === el.dataset.key);
+      if (s) focusOnCase(s.group, s.def);
+    });
+  });
 }
 
 document.getElementById('labelsToggle').addEventListener('click', function(){
@@ -1587,10 +1666,25 @@ function focusOn(key){
   showInfo(key);
   const targetMesh = key==='Moon' ? moonMesh : objects[key].mesh;
   flyTarget = targetMesh;
+  flyOffset = new THREE.Vector3(0, 8, 22);
   flyStartPos = camera.position.clone();
   flyStartQuat = camera.quaternion.clone();
   flyProgress = 0;
   flying = true;
+}
+
+// voo até um marcador de avistamento: aproxima bem mais que o focusOn() de planeta, parando
+// pertinho, "flutuando" um pouco acima daquele ponto na superfície da Terra
+function focusOnCase(marker, def){
+  const earthPos = objects['Earth'].mesh.position;
+  const dir = marker.position.clone().sub(earthPos).normalize();
+  flyTarget = marker;
+  flyOffset = dir.multiplyScalar(2.4);
+  flyStartPos = camera.position.clone();
+  flyStartQuat = camera.quaternion.clone();
+  flyProgress = 0;
+  flying = true;
+  showBodyInfo({ name: `${def.name} — ${def.location}`, status: `${def.summary} Fonte: ${def.source}` });
 }
 
 // ---------- CÂMERA LIVRE (fly-cam) ----------
@@ -1598,6 +1692,7 @@ let yaw = -Math.PI/2, pitch = -0.35;
 const moveState = { fwd:false, back:false, left:false, right:false, up:false, down:false };
 let dragging = false, lastX=0, lastY=0;
 let flying = false, flyTarget=null, flyStartPos=null, flyStartQuat=null, flyProgress=0;
+let flyOffset = new THREE.Vector3(0, 8, 22); // padrão (planetas); focusOnCase() troca por um offset bem mais próximo
 
 function applyLook(){
   const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(pitch, yaw, 0, 'YXZ'));
@@ -1629,6 +1724,15 @@ function pickAt(x,y){
     }
 
     // camadas teórico/ficção/fenômenos (Vulcano hipotético, Nibiru, naves da Lua, marcador de fenômeno)
+    if (sightingGroup.visible){
+      const sightingObjects = sightingMarkers.map(s=>s.group);
+      const sightingHit = raycaster.intersectObjects(sightingObjects, true)[0];
+      if (sightingHit){
+        const found = sightingMarkers.find(s => s.group === sightingHit.object || sightingHit.object.parent === s.group);
+        if (found){ focusOnCase(found.group, found.def); return; }
+      }
+    }
+
     const extra = theoreticalMeshes
       .concat(moonShips.map(o=>({ mesh:o.group, def:o.def })))
       .concat(phenomenaMeshes)
@@ -1814,7 +1918,7 @@ function animate(){
     flyProgress = Math.min(1, flyProgress + dt*0.7);
     const ease = flyProgress*flyProgress*(3-2*flyProgress);
     const targetPos = flyTarget.position.clone();
-    const desiredCamPos = targetPos.clone().add(new THREE.Vector3(0, 8, 22));
+    const desiredCamPos = targetPos.clone().add(flyOffset);
     camera.position.lerpVectors(flyStartPos, desiredCamPos, ease);
     const lookQuat = new THREE.Quaternion();
     const m = new THREE.Matrix4().lookAt(camera.position, targetPos, new THREE.Vector3(0,1,0));
