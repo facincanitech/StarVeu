@@ -25,7 +25,8 @@
     border:1px solid #2c4160;border-radius:4px;padding:4px 7px;cursor:pointer;
   }
   .speedBtn.active{background:#2a4a70;color:#fff;border-color:#7fbfff;}
-  #layerRow{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap;}
+  #layerRow{display:flex;flex-direction:column;gap:4px;margin-top:6px;}
+  #layerRow .layerCatBtn{width:100%;text-align:left;box-sizing:border-box;}
   .layerCatBtn{
     font-family:monospace;font-size:10px;background:#1a1420;color:#c9b8d9;
     border:1px solid #3a2c48;border-radius:4px;padding:4px 7px;cursor:pointer;
@@ -108,7 +109,7 @@
 <body>
 
 <div id="loading">calculando posições reais...</div>
-<div id="versionBadge">StarVeu — build 2026-07-09b</div>
+<div id="versionBadge">StarVeu — build 2026-07-09c</div>
 
 <div id="hud">
   <div class="clock" id="clockText">—</div>
