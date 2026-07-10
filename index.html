@@ -109,7 +109,7 @@
 <body>
 
 <div id="loading">calculando posições reais...</div>
-<div id="versionBadge">StarVeu — build 2026-07-09c</div>
+<div id="versionBadge">StarVeu — build 2026-07-09d</div>
 
 <div id="hud">
   <div class="clock" id="clockText">—</div>
@@ -1423,9 +1423,16 @@ function renderSightingsPanel(){
       <span>avistamentos</span>
       <label style="font-size:10px;"><input type="checkbox" id="sightingsVisible" ${checked}> mostrar na cena</label>
     </div>
+    <div class="panelSpeedRow"><button class="speedBtn" id="enterGlobeBtn">🌍 Ver globo</button></div>
     <div class="panelItems">${rows}</div>`;
   layerPanelEl.querySelector('#sightingsVisible').addEventListener('change', e=>{
     setItemVisible('sightings', 'Avistamentos', e.target.checked);
+  });
+  layerPanelEl.querySelector('#enterGlobeBtn').addEventListener('click', ()=>{
+    const first = sightingMarkers[0];
+    const dir = first ? first.group.position.clone().sub(objects['Earth'].mesh.position).normalize() : null;
+    enterEarthMap(dir);
+    infoPanelEl.style.display = 'none';
   });
   layerPanelEl.querySelectorAll('.neoItem[data-key]').forEach(el=>{
     el.addEventListener('click', ()=>{
@@ -1624,6 +1631,8 @@ function enterStarSystem(def){
   skyGroup.visible = false;
   sunLight.visible = false;
   starSystemGroup.visible = true;
+  backBtnMode = 'starSystem';
+  backBtnEl.textContent = '← Voltar ao Sistema Solar';
   backBtnEl.style.display = 'block';
 
   camera.position.set(0, 15, 55);
@@ -1656,7 +1665,10 @@ function warpToStar(def){
 function warpToSolarSystem(){
   warpEffect('#7fbfff', exitStarSystem);
 }
-backBtnEl.addEventListener('click', warpToSolarSystem);
+backBtnEl.addEventListener('click', ()=>{
+  if (backBtnMode === 'earthMap') exitEarthMap();
+  else warpToSolarSystem();
+});
 
 let selectedKey = null;
 function focusOn(key){
@@ -1674,17 +1686,12 @@ function focusOn(key){
   flying = true;
 }
 
-// voo até um marcador de avistamento: aproxima bem mais que o focusOn() de planeta, parando
-// pertinho, "flutuando" um pouco acima daquele ponto na superfície da Terra
+// clicar num caso de avistamento: entra no "modo globo" (órbita perto da superfície da Terra,
+// tipo Maps/Google Earth, só habilitado pra essa finalidade) já mirando naquele marcador
 function focusOnCase(marker, def){
   const earthPos = objects['Earth'].mesh.position;
   const dir = marker.position.clone().sub(earthPos).normalize();
-  flyTarget = marker;
-  flyOffset = dir.multiplyScalar(2.4);
-  flyStartPos = camera.position.clone();
-  flyStartQuat = camera.quaternion.clone();
-  flyProgress = 0;
-  flying = true;
+  enterEarthMap(dir);
   showBodyInfo({ name: `${def.name} — ${def.location}`, status: `${def.summary} Fonte: ${def.source}` });
 }
 
@@ -1702,6 +1709,35 @@ function applyLook(){
 applyLook();
 
 function forwardVec(){ return new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion); }
+
+// ---------- "MODO GLOBO": órbita perto da superfície da Terra, tipo Maps/Google Earth ----------
+// Só existe pra explorar a camada de Avistamentos — arrastar gira ao redor do planeta (não olha
+// livre feito o fly-cam normal), scroll/pinça aproxima/afasta dentro de uma faixa pertinho da
+// superfície. A câmera sempre olha pro centro da Terra, reposicionada em coordenadas esféricas
+// ao redor da posição AO VIVO do planeta (que continua orbitando/girando de verdade por baixo).
+let earthMapMode = false;
+let mapYaw = 0, mapPitch = 0.4, mapDist = 4;
+let backBtnMode = 'starSystem'; // o que o botão "voltar" faz depende do modo atual
+function enterEarthMap(initialDir){
+  flying = false;
+  earthMapMode = true;
+  const r = objects['Earth'].def.radius;
+  if (initialDir){
+    mapPitch = Math.asin(Math.max(-1, Math.min(1, initialDir.y)));
+    mapYaw = Math.atan2(initialDir.z, initialDir.x);
+  }
+  mapDist = r * 1.8;
+  backBtnMode = 'earthMap';
+  backBtnEl.textContent = '← Sair do globo';
+  backBtnEl.style.display = 'block';
+}
+function exitEarthMap(){
+  earthMapMode = false;
+  backBtnMode = 'starSystem';
+  backBtnEl.textContent = '← Voltar ao Sistema Solar';
+  backBtnEl.style.display = 'none';
+  infoPanelEl.style.display = 'none';
+}
 function rightVec(){ return new THREE.Vector3(1,0,0).applyQuaternion(camera.quaternion); }
 
 const dom = renderer.domElement;
@@ -1776,12 +1812,22 @@ window.addEventListener('mousemove', e=>{
   if (!dragging) return;
   const dx=e.clientX-lastX, dy=e.clientY-lastY;
   if (Math.abs(e.clientX-mouseDownX)+Math.abs(e.clientY-mouseDownY) > 5) mouseMoved=true;
-  yaw -= dx*0.0028; pitch -= dy*0.0028;
-  pitch = Math.max(-1.5, Math.min(1.5, pitch));
-  applyLook();
+  if (earthMapMode){
+    mapYaw -= dx*0.004; mapPitch += dy*0.004;
+    mapPitch = Math.max(-1.4, Math.min(1.4, mapPitch));
+  } else {
+    yaw -= dx*0.0028; pitch -= dy*0.0028;
+    pitch = Math.max(-1.5, Math.min(1.5, pitch));
+    applyLook();
+  }
   lastX=e.clientX; lastY=e.clientY;
 });
 window.addEventListener('wheel', e=>{
+  if (earthMapMode){
+    const r = objects['Earth'].def.radius;
+    mapDist = Math.max(r*1.05, Math.min(r*4, mapDist + e.deltaY*0.01));
+    return;
+  }
   flying=false;
   const dist = e.deltaY*0.4;
   camera.position.addScaledVector(forwardVec(), -dist);
@@ -1815,14 +1861,24 @@ dom.addEventListener('touchmove', e=>{
   if (touchMode==='look' && e.touches.length===1){
     const dx=e.touches[0].clientX-lastX, dy=e.touches[0].clientY-lastY;
     if (Math.abs(e.touches[0].clientX-touchStartX)+Math.abs(e.touches[0].clientY-touchStartY) > 8) touchMoved=true;
-    yaw -= dx*0.0032; pitch -= dy*0.0032;
-    pitch = Math.max(-1.5, Math.min(1.5, pitch));
-    applyLook();
+    if (earthMapMode){
+      mapYaw -= dx*0.0045; mapPitch += dy*0.0045;
+      mapPitch = Math.max(-1.4, Math.min(1.4, mapPitch));
+    } else {
+      yaw -= dx*0.0032; pitch -= dy*0.0032;
+      pitch = Math.max(-1.5, Math.min(1.5, pitch));
+      applyLook();
+    }
     lastX=e.touches[0].clientX; lastY=e.touches[0].clientY;
   } else if (touchMode==='pinch' && e.touches.length===2){
     const d = Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY);
     const delta = d - touchStartDist;
-    camera.position.addScaledVector(forwardVec(), delta*0.6);
+    if (earthMapMode){
+      const r = objects['Earth'].def.radius;
+      mapDist = Math.max(r*1.05, Math.min(r*4, mapDist - delta*0.015));
+    } else {
+      camera.position.addScaledVector(forwardVec(), delta*0.6);
+    }
     touchStartDist = d;
   }
 }, { passive:true });
@@ -1915,7 +1971,15 @@ function animate(){
     ship.group.rotation.y = starSystemElapsed*0.35 + ship.phase;
     ship.group.rotation.z = 0.18*Math.sin(starSystemElapsed + ship.phase);
   });
-  if (flying && flyTarget){
+  if (earthMapMode){
+    const earthPos = objects['Earth'].mesh.position;
+    const cy = Math.cos(mapPitch), sy = Math.sin(mapPitch);
+    const cx = Math.cos(mapYaw), sx = Math.sin(mapYaw);
+    const offset = new THREE.Vector3(cy*cx, sy, cy*sx).multiplyScalar(mapDist);
+    camera.position.copy(earthPos).add(offset);
+    const m = new THREE.Matrix4().lookAt(camera.position, earthPos, new THREE.Vector3(0,1,0));
+    camera.quaternion.setFromRotationMatrix(m);
+  } else if (flying && flyTarget){
     flyProgress = Math.min(1, flyProgress + dt*0.7);
     const ease = flyProgress*flyProgress*(3-2*flyProgress);
     const targetPos = flyTarget.position.clone();
