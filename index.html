@@ -28,11 +28,11 @@
   #menuToggleBtn{margin-top:6px;}
   #menuWrap{display:none;}
   #menuWrap.open{display:block;}
-  #layerRow{display:flex;flex-direction:column;gap:3px;margin-top:6px;}
+  #layerRow{display:flex;flex-direction:column;gap:2px;margin-top:6px;}
   #layerRow .layerCatBtn{width:100%;text-align:left;box-sizing:border-box;}
   .layerCatBtn{
-    font-family:monospace;font-size:10px;background:#1a1420;color:#c9b8d9;
-    border:1px solid #3a2c48;border-radius:4px;padding:3px 6px;cursor:pointer;
+    font-family:monospace;font-size:9px;line-height:1.2;background:#1a1420;color:#c9b8d9;
+    border:1px solid #3a2c48;border-radius:4px;padding:2px 6px;cursor:pointer;
   }
   .layerCatBtn.open{background:#4a2a70;color:#fff;border-color:#c07fff;}
   #layerPanel{
@@ -152,7 +152,7 @@
 <body>
 
 <div id="loading">calculando posições reais...</div>
-<div id="versionBadge">StarVeu - v2</div>
+<div id="versionBadge">StarVeu - v3</div>
 
 <div id="hud">
   <div class="clock" id="clockText">—</div>
@@ -2039,10 +2039,10 @@ function animate(){
     }
   } else {
     const speed = groundMode ? 6*dt : (18 + camera.position.length()*0.05) * dt;
-    const netFwd = Math.max(-1, Math.min(1, (moveState.fwd?1:0) - (moveState.back?1:0) + joystickVec.y));
-    const netRight = Math.max(-1, Math.min(1, (moveState.right?1:0) - (moveState.left?1:0) + joystickVec.x));
-    if (netFwd) camera.position.addScaledVector(forwardVec(), speed*netFwd);
-    if (netRight) camera.position.addScaledVector(rightVec(), speed*netRight);
+    if (moveState.fwd) camera.position.addScaledVector(forwardVec(), speed);
+    if (moveState.back) camera.position.addScaledVector(forwardVec(), -speed);
+    if (moveState.right) camera.position.addScaledVector(rightVec(), speed);
+    if (moveState.left) camera.position.addScaledVector(rightVec(), -speed);
     if (moveState.up) camera.position.y += speed;
     if (moveState.down) camera.position.y -= speed;
     if (groundMode) camera.position.y = Math.max(1.2, Math.min(30, camera.position.y)); // não afunda no chão nem sai voando longe demais
