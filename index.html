@@ -28,11 +28,11 @@
   #menuToggleBtn{margin-top:6px;}
   #menuWrap{display:none;}
   #menuWrap.open{display:block;}
-  #layerRow{display:flex;flex-direction:column;gap:2px;margin-top:6px;}
-  #layerRow .layerCatBtn{width:100%;text-align:left;box-sizing:border-box;}
+  #layerRow{display:flex;flex-direction:column;gap:3px;margin-top:6px;align-items:flex-start;}
+  #layerRow .layerCatBtn{width:fit-content;text-align:left;box-sizing:border-box;}
   .layerCatBtn{
-    font-family:monospace;font-size:9px;line-height:1.2;background:#1a1420;color:#c9b8d9;
-    border:1px solid #3a2c48;border-radius:4px;padding:2px 6px;cursor:pointer;
+    font-family:monospace;font-size:10px;background:#1a1420;color:#c9b8d9;
+    border:1px solid #3a2c48;border-radius:4px;padding:4px 7px;cursor:pointer;
   }
   .layerCatBtn.open{background:#4a2a70;color:#fff;border-color:#c07fff;}
   #layerPanel{
@@ -152,7 +152,7 @@
 <body>
 
 <div id="loading">calculando posições reais...</div>
-<div id="versionBadge">StarVeu - v3</div>
+<div id="versionBadge">StarVeu - v4</div>
 
 <div id="hud">
   <div class="clock" id="clockText">—</div>
@@ -851,9 +851,8 @@ REAL_MOONS.forEach(m=>{
   const mat = new THREE.PointsMaterial({ color:0xd9d0b8, size:0.035, transparent:true, opacity:0.55, sizeAttenuation:true });
   const points = new THREE.Points(geo, mat);
   points.rotation.x = -0.4; // as partículas já nascem deitadas no plano XZ (não em pé como o RingGeometry), só falta o mesmo tilt extra do anel de textura (era +Math.PI/2 a mais, por isso saía 90° errado)
-  const group = registerItemGroup('realExtra', 'Nuvem de detritos (Saturno)', new THREE.Group());
-  group.add(points);
-  objects['Saturn'].mesh.add(group);
+  // sem toggle — é real (o anel É detrito de gelo/rocha), fica sempre visível igual à Lua da Terra
+  objects['Saturn'].mesh.add(points);
 })();
 
 // ---------- CAMADA FICÇÃO (escala do sistema solar): naves homenageando franquias + 1 original ----------
@@ -1321,7 +1320,7 @@ const LAYER_ITEMS = {
   theoretical: THEORETICAL_BODIES.map(b=>b.name),
   fiction: ['Star Trek','Star Wars','Lost in Space','Stargate','Original'],
   phenomena: [PHENOMENA_NAME],
-  realExtra: REAL_SMALL_BODIES.map(b=>b.name).concat(['Nuvem de detritos (Saturno)']),
+  realExtra: REAL_SMALL_BODIES.map(b=>b.name),
 };
 const layerPanelEl = document.getElementById('layerPanel');
 let openLayer = null;
