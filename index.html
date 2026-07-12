@@ -143,12 +143,24 @@
     mix-blend-mode:screen;
   }
   #warpOverlay.flash{ background:radial-gradient(circle, var(--warpColor,#fff) 0%, transparent 70%); }
+  #joystickBase{
+    position:fixed;left:24px;bottom:100px;width:84px;height:84px;border-radius:50%;
+    border:2px solid rgba(160,200,255,0.25);background:rgba(20,30,50,0.15);
+    z-index:15;touch-action:none;opacity:0.4;transition:opacity 0.15s;
+  }
+  #joystickBase.active{ opacity:0.9; border-color:rgba(160,200,255,0.5); }
+  #joystickKnob{
+    position:absolute;left:50%;top:50%;width:38px;height:38px;margin:-19px 0 0 -19px;
+    border-radius:50%;background:rgba(140,180,255,0.35);border:1px solid rgba(210,230,255,0.55);
+    transition:transform 0.05s linear;pointer-events:none;
+  }
+  @media (hover:hover) and (pointer:fine){ #joystickBase{ display:none; } }
 </style>
 </head>
 <body>
 
 <div id="loading">calculando posições reais...</div>
-<div id="versionBadge">StarVeu — build 2026-07-10g</div>
+<div id="versionBadge">StarVeu — build 2026-07-10h</div>
 
 <div id="hud">
   <div class="clock" id="clockText">—</div>
@@ -194,6 +206,8 @@
 <button id="backBtn">← Voltar ao Sistema Solar</button>
 <button id="enterPlanetBtn" style="display:none;">↓ Entrar na Terra</button>
 <div id="warpOverlay"></div>
+
+<div id="joystickBase"><div id="joystickKnob"></div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/astronomy-engine/astronomy.browser.min.js"></script>
@@ -1763,6 +1777,7 @@ const enterPlanetBtnEl = document.getElementById('enterPlanetBtn');
 function enterGroundMode(){
   flying = false;
   groundMode = true;
+  joystickBaseEl.style.display = 'none'; // modo chão é só olhar, sem "andar"
   solarGroup.visible = false; skyGroup.visible = false; sunLight.visible = false;
   scene.background = groundBgTexture;
   camera.position.set(0, 1.7, 0);
@@ -1779,6 +1794,7 @@ function enterGroundMode(){
 }
 function exitGroundMode(){
   groundMode = false;
+  joystickBaseEl.style.display = '';
   solarGroup.visible = true; skyGroup.visible = true; sunLight.visible = true;
   scene.background = SOLAR_SCENE_BG;
   caseDetailPanelEl.style.display = 'none';
@@ -1884,38 +1900,90 @@ window.addEventListener('keyup', e=>{
   if (k===' ') moveState.up=false; if (k==='shift') moveState.down=false;
 });
 
-// touch (mobile): 1 dedo arrasta = olhar / toque curto = selecionar; 2 dedos = pinça pra avançar-recuar
-let touchMode=null, touchStartDist=0, touchStartX=0, touchStartY=0, touchMoved=false, touchStartTime=0;
+// joystick virtual (mobile): fica no canto inferior esquerdo, base sutil sempre visível pra dar
+// pra achar, brilha e o "manete" segue o dedo quando toca dentro. Fora dele, arrasta pra olhar —
+// os dois funcionam ao mesmo tempo (um dedo no joystick, outro olhando em volta).
+const joystickBaseEl = document.getElementById('joystickBase');
+const joystickKnobEl = document.getElementById('joystickKnob');
+let joystickTouchId = null;
+let joystickCenter = {x:0, y:0};
+const JOYSTICK_RADIUS = 42;
+const JOYSTICK_GRAB_RADIUS = 65; // área de "pegar" um pouco maior que o visual, mais fácil de acertar
+let joystickVec = {x:0, y:0}; // -1..1, x=strafe, y=frente(+)/trás(-)
+function updateJoystickCenter(){
+  const r = joystickBaseEl.getBoundingClientRect();
+  joystickCenter.x = r.left + r.width/2;
+  joystickCenter.y = r.top + r.height/2;
+}
+function setJoystickFromTouch(t){
+  let dx = t.clientX - joystickCenter.x, dy = t.clientY - joystickCenter.y;
+  const dist = Math.hypot(dx, dy);
+  if (dist > JOYSTICK_RADIUS){ dx *= JOYSTICK_RADIUS/dist; dy *= JOYSTICK_RADIUS/dist; }
+  joystickKnobEl.style.transform = `translate(${dx}px, ${dy}px)`;
+  joystickVec.x = dx/JOYSTICK_RADIUS;
+  joystickVec.y = -dy/JOYSTICK_RADIUS; // arrastar pra cima = andar pra frente
+}
+function resetJoystick(){
+  joystickTouchId = null;
+  joystickVec.x = 0; joystickVec.y = 0;
+  joystickKnobEl.style.transform = 'translate(0,0)';
+  joystickBaseEl.classList.remove('active');
+}
+
+// 1 dedo fora do joystick arrasta = olhar / toque curto = selecionar; 2 dedos fora do joystick = pinça
+let touchMode=null, touchStartDist=0, touchStartX=0, touchStartY=0, touchMoved=false, touchStartTime=0, lookTouchId=null;
 dom.addEventListener('touchstart', e=>{
   flying = false;
-  if (e.touches.length===1){
-    touchMode='look'; touchStartX=e.touches[0].clientX; touchStartY=e.touches[0].clientY;
+  for (const t of e.changedTouches){
+    if (joystickTouchId===null){
+      updateJoystickCenter();
+      if (Math.hypot(t.clientX-joystickCenter.x, t.clientY-joystickCenter.y) <= JOYSTICK_GRAB_RADIUS){
+        joystickTouchId = t.identifier;
+        joystickBaseEl.classList.add('active');
+        setJoystickFromTouch(t);
+      }
+    }
+  }
+  // toques restantes (que não são o do joystick) controlam olhar/pinça, como antes
+  const rest = [...e.touches].filter(t=>t.identifier!==joystickTouchId);
+  if (rest.length===1){
+    touchMode='look'; lookTouchId=rest[0].identifier;
+    touchStartX=rest[0].clientX; touchStartY=rest[0].clientY;
     lastX=touchStartX; lastY=touchStartY; touchMoved=false; touchStartTime=Date.now();
-  } else if (e.touches.length===2){
+  } else if (rest.length===2){
     touchMode='pinch';
-    touchStartDist = Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY);
+    touchStartDist = Math.hypot(rest[0].clientX-rest[1].clientX, rest[0].clientY-rest[1].clientY);
+  } else {
+    touchMode=null;
   }
 }, { passive:true });
 dom.addEventListener('touchmove', e=>{
-  if (touchMode==='look' && e.touches.length===1){
-    const dx=e.touches[0].clientX-lastX, dy=e.touches[0].clientY-lastY;
-    if (Math.abs(e.touches[0].clientX-touchStartX)+Math.abs(e.touches[0].clientY-touchStartY) > 8) touchMoved=true;
+  for (const t of e.changedTouches){
+    if (t.identifier===joystickTouchId) setJoystickFromTouch(t);
+  }
+  const rest = [...e.touches].filter(t=>t.identifier!==joystickTouchId);
+  if (touchMode==='look' && rest.length===1 && rest[0].identifier===lookTouchId){
+    const dx=rest[0].clientX-lastX, dy=rest[0].clientY-lastY;
+    if (Math.abs(rest[0].clientX-touchStartX)+Math.abs(rest[0].clientY-touchStartY) > 8) touchMoved=true;
     yaw -= dx*0.0032; pitch -= dy*0.0032;
     pitch = Math.max(-1.5, Math.min(1.5, pitch));
     applyLook();
-    lastX=e.touches[0].clientX; lastY=e.touches[0].clientY;
-  } else if (touchMode==='pinch' && e.touches.length===2 && !groundMode){
-    const d = Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY);
+    lastX=rest[0].clientX; lastY=rest[0].clientY;
+  } else if (touchMode==='pinch' && rest.length===2 && !groundMode){
+    const d = Math.hypot(rest[0].clientX-rest[1].clientX, rest[0].clientY-rest[1].clientY);
     const delta = d - touchStartDist;
     camera.position.addScaledVector(forwardVec(), delta*0.6);
     touchStartDist = d;
   }
 }, { passive:true });
 dom.addEventListener('touchend', e=>{
+  for (const t of e.changedTouches){
+    if (t.identifier===joystickTouchId) resetJoystick();
+  }
   if (touchMode==='look' && !touchMoved && Date.now()-touchStartTime < 400){
     pickAt(touchStartX, touchStartY);
   }
-  touchMode=null;
+  if ([...e.touches].filter(t=>t.identifier!==joystickTouchId).length===0) touchMode=null;
 }, { passive:true });
 
 window.addEventListener('resize', ()=>{
@@ -2017,10 +2085,10 @@ function animate(){
     }
   } else {
     const speed = groundMode ? 6*dt : (18 + camera.position.length()*0.05) * dt;
-    if (moveState.fwd) camera.position.addScaledVector(forwardVec(), speed);
-    if (moveState.back) camera.position.addScaledVector(forwardVec(), -speed);
-    if (moveState.right) camera.position.addScaledVector(rightVec(), speed);
-    if (moveState.left) camera.position.addScaledVector(rightVec(), -speed);
+    const netFwd = Math.max(-1, Math.min(1, (moveState.fwd?1:0) - (moveState.back?1:0) + joystickVec.y));
+    const netRight = Math.max(-1, Math.min(1, (moveState.right?1:0) - (moveState.left?1:0) + joystickVec.x));
+    if (netFwd) camera.position.addScaledVector(forwardVec(), speed*netFwd);
+    if (netRight) camera.position.addScaledVector(rightVec(), speed*netRight);
     if (moveState.up) camera.position.y += speed;
     if (moveState.down) camera.position.y -= speed;
     if (groundMode) camera.position.y = Math.max(1.2, Math.min(30, camera.position.y)); // não afunda no chão nem sai voando longe demais
