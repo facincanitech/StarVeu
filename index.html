@@ -152,7 +152,7 @@
 <body>
 
 <div id="loading">calculando posições reais...</div>
-<div id="versionBadge">StarVeu - v1</div>
+<div id="versionBadge">StarVeu - v2</div>
 
 <div id="hud">
   <div class="clock" id="clockText">—</div>
@@ -1257,6 +1257,9 @@ function updatePositions(date){
     const x = v.x * AU_TO_UNITS, y = v.z * AU_TO_UNITS, z = v.y * AU_TO_UNITS;
     obj.mesh.position.set(x, y*0.35, z); // achata levemente a inclinação p/ leitura visual mais clara
     obj.label.position.set(x, y*0.35 + def.radius + 4, z);
+    if (def.key === 'Earth'){
+      obj.mesh.rotation.y = -greenwichSiderealAngleRad(date) + EARTH_TEXTURE_OFFSET_DEG*Math.PI/180;
+    }
   });
 
   // lua: usa a DIREÇÃO real (GeoMoon) em torno da terra, raio artístico p/ ficar visível
@@ -1961,7 +1964,7 @@ function animate(){
   const simSecondsThisFrame = dt*timeMultiplier;
   BODIES.forEach(def=>{
     const obj = objects[def.key];
-    if (!obj || !def.rotationHours) return;
+    if (!obj || !def.rotationHours || def.key === 'Earth') return; // Terra usa GMST (fase real), não incremento — ver updatePositions()
     obj.mesh.rotation.y += (simSecondsThisFrame/(def.rotationHours*3600))*Math.PI*2;
   });
 
