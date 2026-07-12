@@ -152,7 +152,7 @@
 <body>
 
 <div id="loading">calculando posições reais...</div>
-<div id="versionBadge">StarVeu - v4</div>
+<div id="versionBadge">StarVeu - v5</div>
 
 <div id="hud">
   <div class="clock" id="clockText">—</div>
@@ -413,7 +413,6 @@ BODIES.forEach(def=>{
 
   objects[def.key] = { mesh, label, def };
 });
-
 // Lua: pequena esfera filha visualmente orbitando a Terra
 const moonMesh = lowPolyMesh(0.55, 0xb9b9b9, 0, MOON_TEXTURE);
 solarGroup.add(moonMesh);
@@ -429,11 +428,14 @@ solarGroup.add(moonLabel);
 // radius, ra (horas), dec (graus) } num array e citar nas linhas.
 const SKY_RADIUS = 6000;
 function raDec(raHours, decDeg, r = SKY_RADIUS){
+  // câmera fica DENTRO da esfera celeste (olhando de dentro pra fora), não fora olhando pra dentro
+  // como um mapa-múndi de estrelas costuma assumir — por isso o termo de RA (Z) é invertido, senão
+  // as constelações saem espelhadas (Órion ficava ao contrário lateralmente, André percebeu 2026-07-12)
   const raRad = raHours * 15 * Math.PI/180, decRad = decDeg * Math.PI/180;
   return [
     Math.cos(decRad) * Math.cos(raRad) * r,
     Math.sin(decRad) * r,
-    Math.cos(decRad) * Math.sin(raRad) * r,
+    -Math.cos(decRad) * Math.sin(raRad) * r,
   ];
 }
 function star(key, name, color, temp, type, distLy, radius, ra, dec, extra){
@@ -699,6 +701,13 @@ THEORETICAL_BODIES.forEach(b=>{
 const MU_SUN = 0.00029591220828559104; // GM do Sol em UA³/dia² (constante gravitacional gaussiana ao quadrado)
 const J2000_MS = Date.UTC(2000,0,1,12,0,0);
 function dateToJD(d){ return d.getTime()/86400000 + 2440587.5; }
+// AVISO PRA QUEM MEXER AQUI DEPOIS: o mapeamento (sceneX,sceneY,sceneZ)=(v.x,v.z,v.y) usado em
+// updatePositions() troca Y↔Z do referencial equatorial nativo do astronomy-engine. Trocar dois
+// eixos inverte a lateralidade (destrógiro vira levógiro) — qualquer fórmula de ÂNGULO (não só
+// posição) derivada "no papel" assumindo referencial normal vai sair espelhada na tela. Foi assim
+// que a rotação da Terra e o céu de constelações (raDec) saíram invertidos numa sessão (2026-07-12).
+// Regra prática: sempre TESTAR contra um valor real conhecido (Chrome headless + Puppeteer lendo
+// a cena ao vivo, não só matemática no papel) antes de confiar num sinal.
 
 // GMST (Greenwich Mean Sidereal Time) — dá o ângulo real de "pra onde a Terra tá virada" num
 // instante qualquer, independente da posição orbital dela. É o jeito certo de sincronizar o giro
@@ -712,8 +721,12 @@ function greenwichSiderealAngleRad(date){
   gmstDeg = ((gmstDeg % 360) + 360) % 360;
   return gmstDeg * Math.PI/180;
 }
-// calibração fina: se a Terra abrir com o lado dia/noite girado (ex.: mostrando dia onde devia ser
-// noite), ajuste esse valor em graus — o resto do cálculo (GMST) já é astronomicamente correto.
+// calibração fina (grau residual, ~1° por causa da equação do tempo que a fórmula abaixo não
+// modela) — testado e validado em 2026-07-12 comparando com a longitude subsolar real via
+// Puppeteer/Chrome headless (bateu com <1.3° de erro em 5 horários diferentes espalhados por
+// semanas). rotation.y usa +GMST (não -GMST): o sinal certo só foi achado testando na prática,
+// porque o sistema de eixos da cena (X,Z trocados em relação ao referencial equatorial nativo do
+// astronomy-engine) inverte a "lateralidade" — mesma causa-raiz do Órion espelhado, ver raDec().
 const EARTH_TEXTURE_OFFSET_DEG = 0;
 function solveKeplerEllipse(M, e){
   let E = e < 0.8 ? M : Math.PI;
@@ -1257,7 +1270,7 @@ function updatePositions(date){
     obj.mesh.position.set(x, y*0.35, z); // achata levemente a inclinação p/ leitura visual mais clara
     obj.label.position.set(x, y*0.35 + def.radius + 4, z);
     if (def.key === 'Earth'){
-      obj.mesh.rotation.y = -greenwichSiderealAngleRad(date) + EARTH_TEXTURE_OFFSET_DEG*Math.PI/180;
+      obj.mesh.rotation.y = greenwichSiderealAngleRad(date) + EARTH_TEXTURE_OFFSET_DEG*Math.PI/180;
     }
   });
 
@@ -1713,7 +1726,7 @@ function exitStarSystem(){
   backBtnEl.style.display = 'none';
 
   camera.position.set(0, 90, 220);
-  yaw = -Math.PI/4; pitch = -0.35; applyLook();
+  yaw = -Math.PI/4; pitch = 0; applyLook();
   infoPanelEl.style.display = 'none';
 }
 
@@ -1748,7 +1761,7 @@ function focusOn(key){
 // ---------- CÂMERA LIVRE (fly-cam) ----------
 // yaw inicial: -90° olhava pra Saturno; André pediu 45° pra esquerda (só no horizontal, mesma
 // altura/pitch) pra abrir olhando pra Terra em vez disso.
-let yaw = -Math.PI/4, pitch = -0.35;
+let yaw = -Math.PI/4, pitch = 0;
 const moveState = { fwd:false, back:false, left:false, right:false, up:false, down:false };
 let dragging = false, lastX=0, lastY=0;
 let flying = false, flyTarget=null, flyStartPos=null, flyStartQuat=null, flyProgress=0;
@@ -1810,7 +1823,7 @@ function exitGroundMode(){
   bodyListEl.classList.remove('open'); groundSightingsBtnEl.classList.remove('open');
   renderSolarBodyList();
   camera.position.set(0, 90, 220);
-  yaw = -Math.PI/4; pitch = -0.35; applyLook();
+  yaw = -Math.PI/4; pitch = 0; applyLook();
 }
 enterPlanetBtnEl.addEventListener('click', enterGroundMode);
 
